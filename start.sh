@@ -12,4 +12,8 @@ docker run -d \
     "$IMAGE_NAME" \
     tail -f /dev/null
 
+echo "Copying VS Code settings..."
+docker exec "$CONTAINER_NAME" mkdir -p /mydockerspace/.vscode
+docker cp .vscode/settings.json "$CONTAINER_NAME":/mydockerspace/.vscode/settings.json
+
 echo "Container started. To enter: docker exec -it $CONTAINER_NAME bash"
