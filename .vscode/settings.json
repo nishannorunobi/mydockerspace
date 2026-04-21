@@ -1,0 +1,6 @@
+{
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "workbench.colorTheme": "Visual Studio Dark"
+}
