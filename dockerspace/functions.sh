@@ -187,6 +187,9 @@ setup_project() {
         return
     fi
 
+    echo "==> Adding GitHub to known_hosts for '$user'..."
+    su - "$user" -c "mkdir -p ~/.ssh && ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null"
+
     echo "==> Cloning '$GIT_CLONE_URL' into projectspace/$clone_name..."
     mkdir -p "$clone_path"
     chown "$user":"$user" "$clone_path"
