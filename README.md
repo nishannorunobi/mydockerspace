@@ -1,45 +1,44 @@
 # mydockerspace
 
-A Dockerized development workspace. Nothing is installed on the host machine except Docker — all tooling runs inside the container.
+A generic Dockerized development workspace. Only Docker needed on the host.
 
-## Philosophy
+## Quick Start
 
-- Local machine and Docker container each have their own git clone
-- They sync via **git push/pull through GitHub** — not via volume mount
-- Only `git-ignore-resources/` is volume-mounted (for sharing local files/media)
+**1. Configure `workspace.conf`**
+```bash
+CONTAINER_TYPE="dev"           # dev | test | prod
+PKG_MANAGER="apt"              # apt | yum | dnf | apk
+GIT_USER_NAME="Your Name"
+GIT_USER_EMAIL="your@email.com"
+SSH_KEY_MODE="copy_from_host"  # copy_from_host | generate
+```
 
-## Workflow
-
-### 1. Start the container (run on host)
+**2. Start**
 ```bash
 bash start.sh
 ```
-Builds the Docker image and starts the container with `git-ignore-resources/` mounted.
+Builds the image, starts the container, and sets up the environment automatically.
 
-### 2. Set up environment (run inside container)
+**3. Enter the container**
 ```bash
-bash docker_env.sh
+docker exec -it mydockerspace-container bash
+su - devuser   # or testuser / produser
 ```
-Installs OS-level dependencies (ffmpeg, etc.) inside the container.
 
-### 3. Stop and clean up (run on host)
+**4. Stop and clean up**
 ```bash
 bash stop.sh
 ```
-Stops the container and removes the container + image (full clean).
 
-## File Reference
+## Container Types
 
-| File | Where it runs | Purpose |
-|------|--------------|---------|
-| `Dockerfile` | — | Base image definition (python:3.10-slim + git + curl) |
-| `docker_config.sh` | Host | Defines IMAGE_NAME, CONTAINER_NAME, paths |
-| `start.sh` | Host | Builds image + starts container |
-| `stop.sh` | Host | Stops + removes container and image |
-| `docker_env.sh` | Container | Installs OS deps (ffmpeg, etc.) |
+| Type | User |
+|---|---|
+| `dev` | devuser |
+| `test` | testuser |
+| `prod` | produser |
 
-## Notes
+## SSH Keys
 
-- `git-ignore-resources/` is gitignored — use it for media files or local assets
-- `.vscode/` is gitignored — VS Code settings are local only
-- Each subproject manages its own `.gitignore`
+- `copy_from_host` — reuses your host `~/.ssh/id_ed25519`, no GitHub re-auth needed
+- `generate` — creates a new keypair inside the container, public key is printed at the end

@@ -1,2 +1,4 @@
 git-ignore-resources/
 subtitle-burner
+claude/node_modules
+

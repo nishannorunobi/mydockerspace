@@ -2,7 +2,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "$SCRIPT_DIR/docker_config.sh"
+source "$SCRIPT_DIR/workspace.conf"
 
 sudo chown -R "$USER":"$USER" "$SCRIPT_DIR/git-ignore-resources"
 

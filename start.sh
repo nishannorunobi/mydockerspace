@@ -1,11 +1,9 @@
 #!/bin/bash
 
-source "$(dirname "$0")/docker_config.sh"
+source "$(dirname "$0")/workspace.conf"
 
 echo "Building image: $IMAGE_NAME..."
 docker build -t "$IMAGE_NAME" .
-
-VSCODE_SHADOW_DIR=$(mktemp -d)
 
 echo "Starting container: $CONTAINER_NAME..."
 docker run -d \
@@ -13,16 +11,22 @@ docker run -d \
     -v "$(pwd)":/mydockerspace \
     -v /dev/null:/mydockerspace/start.sh \
     -v /dev/null:/mydockerspace/stop.sh \
-    -v "$VSCODE_SHADOW_DIR":/mydockerspace/.vscode \
     "$IMAGE_NAME" \
     tail -f /dev/null
 
-echo "Copying SSH keys..."
-docker cp ~/.ssh "$CONTAINER_NAME":/root/.ssh
+# COPY_SSH_FROM_HOST=true:  copies keys here (host side), container script distributes to user ~/.ssh
+# COPY_SSH_FROM_HOST=false: nothing to do here, container script generates the key directly
+if [ "$COPY_SSH_FROM_HOST" = true ]; then
+    echo "Copying SSH keys from host..."
+    docker cp ~/.ssh "$CONTAINER_NAME":/root/.ssh
+fi
 
-echo "Copying VS Code settings..."
-docker cp .vscode/settings.json "$CONTAINER_NAME":/mydockerspace/.vscode/settings.json
+if [ "$COPY_VSCODE_SETTINGS" = true ]; then
+    echo "Copying VS Code settings..."
+    docker cp .vscode/settings.json "$CONTAINER_NAME":/mydockerspace/.vscode/settings.json
+fi
 
-echo "Container started. To enter: docker exec -it $CONTAINER_NAME bash"
+echo "Running $CONTAINER_TYPE environment setup..."
+docker exec -it "$CONTAINER_NAME" bash /mydockerspace/${CONTAINER_TYPE}_container.sh
 
 bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/permission.sh"
