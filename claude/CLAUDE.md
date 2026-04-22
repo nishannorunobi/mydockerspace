@@ -8,7 +8,7 @@ This file is for Claude. It contains the full architecture, history of decisions
 
 A generic, reusable Dockerized development workspace. The host machine has nothing installed except Docker. All tooling, users, and dependencies live inside the container. Multiple subprojects can live inside it — each manages its own deps.
 
-The host and container each have their own git clone of the repo. They sync via GitHub push/pull — NOT via volume mount. The entire workspace root is volume-mounted into the container at `/mydockerspace`.
+The host and container each have their own git clone of the repo. They sync via GitHub push/pull — NOT via volume mount. The entire workspace root is volume-mounted into the container at the path defined by `CONTAINER_WORKDIR` in `workspace.conf`.
 
 ---
 
@@ -32,7 +32,7 @@ Each script sources `functions.sh` and `../claude/claude_cli.sh`, then calls the
 Setup order per script: `install_packages` → `setup_user` → SSH → `setup_git` → `setup_workspace_group` → Claude CLI (if enabled) → `setup_project` (if `GIT_CLONE_URL` set).
 
 ### Workspace group: `dockerusergroup`
-`/mydockerspace` is root-owned by default. To give created users write access, all users are added to `dockerusergroup` and `/mydockerspace` is set to `g+ws` with group ownership `dockerusergroup`. This runs at the end of each container script via `setup_workspace_group`.
+`$CONTAINER_WORKDIR` is root-owned by default. To give created users write access, all users are added to `dockerusergroup` and `$CONTAINER_WORKDIR` is set to `g+ws` with group ownership `dockerusergroup`. This runs at the end of each container script via `setup_workspace_group`.
 
 ---
 
@@ -60,7 +60,7 @@ Setup order per script: `install_packages` → `setup_user` → SSH → `setup_g
 ## Workspace Directory Structure
 
 ```
-myworkspace/                    ← workspace root, mounted as /mydockerspace in container
+myworkspace/                    ← workspace root, mounted as $CONTAINER_WORKDIR in container
 ├── .gitignore
 ├── .vscode/settings.json
 ├── README.md
@@ -83,8 +83,8 @@ myworkspace/                    ← workspace root, mounted as /mydockerspace in
 │   ├── check_hostdocker.sh
 │   ├── troubleshoot.sh
 │   └── myworkspace_struct.sh
-├── projectspace/               ← gitignored, for user's subprojects
-└── mountspace/       ← gitignored, for local files/media never committed
+├── $PROJECTSPACE_DIR/          ← gitignored, for user's subprojects
+└── $MOUNTSPACE_DIR/            ← gitignored, for local files/media never committed
 ```
 
 ---
@@ -96,11 +96,11 @@ myworkspace/                    ← workspace root, mounted as /mydockerspace in
    - Runs `myworkspace_struct.sh` — creates any missing directories
    - Runs `check_hostdocker.sh` — installs Docker if missing, starts daemon if stopped
    - Builds Docker image from `dockerspace/` (Dockerfile is there)
-   - Starts container, mounts workspace root (`myworkspace/`) as `/mydockerspace`
+   - Starts container, mounts workspace root as `$CONTAINER_WORKDIR`
    - Copies host `~/.ssh` to `/root/.ssh` inside container (if `COPY_SSH_FROM_HOST=true`)
-   - Runs `troubleshoot.sh` — creates and chowns `mountspace/`
-   - Runs `docker exec -it $CONTAINER_NAME bash /mydockerspace/dockerspace/${CONTAINER_TYPE}_container.sh`
-3. User enters container: `docker exec -it mydockerspace-container bash`, then `su - <user>`
+   - Runs `troubleshoot.sh` — creates and chowns `$MOUNTSPACE_DIR/`
+   - Runs `docker exec -it $CONTAINER_NAME bash $CONTAINER_WORKDIR/dockerspace/${CONTAINER_TYPE}_container.sh`
+3. User enters container: `docker exec -it $CONTAINER_NAME bash`, then `su - <user>`
 4. `bash dockerspace/stop.sh` on host — full clean (container + image removed)
 
 ---
@@ -138,13 +138,13 @@ All setup steps in all container scripts are safe to re-run multiple times:
 
 ## Rules
 
-- Never mount only a subdirectory — the entire workspace root is mounted as `/mydockerspace`
+- Never mount only a subdirectory — the entire workspace root is mounted as `$CONTAINER_WORKDIR`
 - Never auto-run container scripts from outside `start.sh` flow — they require root inside the container
 - Never add project-specific tools to `functions.sh` or the `Dockerfile` — each subproject handles its own deps in its container script
 - Never add subproject-specific ignores to root `.gitignore`
 - Only add entries to `.gitignore` when the file/folder actually exists
 - Keep the Dockerfile minimal — base image + WORKDIR only
-- WORKDIR inside container is `/mydockerspace`
+- WORKDIR inside container is `$CONTAINER_WORKDIR` (set in `workspace.conf`, passed as Docker build arg)
 - Do not assume a fixed base image — always check the Dockerfile before making image-specific suggestions
 - `workspace.conf` is the single source of truth for all configuration — do not split config back into multiple files
 - `functions.sh` is a library — never add execution logic to it, only function definitions
