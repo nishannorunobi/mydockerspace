@@ -5,6 +5,8 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+source "$SCRIPT_DIR/workspace.conf"
+
 echo "==> Checking workspace structure at: $WORKSPACE_ROOT"
 
 ensure_dir() {
@@ -22,7 +24,7 @@ ensure_dir() {
 ensure_dir "$WORKSPACE_ROOT/.vscode"              ".vscode/"
 ensure_dir "$WORKSPACE_ROOT/claude"               "claude/"
 ensure_dir "$WORKSPACE_ROOT/dockerspace"          "dockerspace/"
-ensure_dir "$WORKSPACE_ROOT/projectspace"         "projectspace/         (gitignored)"
-ensure_dir "$WORKSPACE_ROOT/mountspace" "mountspace/  (gitignored)"
+ensure_dir "$WORKSPACE_ROOT/$PROJECTSPACE_DIR"    "$PROJECTSPACE_DIR/  (gitignored)"
+ensure_dir "$WORKSPACE_ROOT/$MOUNTSPACE_DIR"      "$MOUNTSPACE_DIR/    (gitignored)"
 
 echo "==> Workspace structure OK."

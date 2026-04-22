@@ -9,12 +9,12 @@ bash "$SCRIPT_DIR/myworkspace_struct.sh"
 bash "$SCRIPT_DIR/check_hostdocker.sh" || exit 1
 
 echo "Building image: $IMAGE_NAME..."
-docker build -t "$IMAGE_NAME" "$SCRIPT_DIR"
+docker build --build-arg CONTAINER_WORKDIR="$CONTAINER_WORKDIR" -t "$IMAGE_NAME" "$SCRIPT_DIR"
 
 echo "Starting container: $CONTAINER_NAME..."
 docker run -d \
     --name "$CONTAINER_NAME" \
-    -v "$WORKSPACE_ROOT":/mydockerspace \
+    -v "$WORKSPACE_ROOT":"$CONTAINER_WORKDIR" \
     "$IMAGE_NAME" \
     tail -f /dev/null
 
@@ -28,7 +28,7 @@ fi
 bash "$SCRIPT_DIR/troubleshoot.sh"
 
 echo "Running $CONTAINER_TYPE environment setup..."
-docker exec -it "$CONTAINER_NAME" bash /mydockerspace/dockerspace/${CONTAINER_TYPE}_container.sh
+docker exec -it "$CONTAINER_NAME" bash "$CONTAINER_WORKDIR/dockerspace/${CONTAINER_TYPE}_container.sh"
 
 echo "Container ready. Dropping into shell..."
 docker exec -it "$CONTAINER_NAME" bash

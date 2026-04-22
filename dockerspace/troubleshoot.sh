@@ -21,10 +21,10 @@ echo "   Ownership restored to $USER."
 # ─── Fix 2: mountspace/ permissions ───────────────────────────────────────────
 
 echo ""
-echo "── Fix: mountspace/ permissions"
-mkdir -p "$WORKSPACE_ROOT/mountspace"
-sudo chown -R "$USER":"$USER" "$WORKSPACE_ROOT/mountspace"
-echo "   mountspace/ is ready."
+echo "── Fix: $MOUNTSPACE_DIR/ permissions"
+mkdir -p "$WORKSPACE_ROOT/$MOUNTSPACE_DIR"
+sudo chown -R "$USER":"$USER" "$WORKSPACE_ROOT/$MOUNTSPACE_DIR"
+echo "   $MOUNTSPACE_DIR/ is ready."
 
 # ─── Fix 3: Git safe.directory ────────────────────────────────────────────────
 # If git still refuses after chown (e.g. multi-user setup), register as safe.

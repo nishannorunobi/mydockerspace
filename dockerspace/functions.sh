@@ -180,7 +180,7 @@ setup_project() {
     local repo_name
     repo_name=$(basename "$GIT_CLONE_URL" .git)
     local clone_name="${PROJECT_NAME:-$repo_name}"
-    local clone_path="/mydockerspace/projectspace/$clone_name"
+    local clone_path="$CONTAINER_WORKDIR/$PROJECTSPACE_DIR/$clone_name"
 
     if [ -d "$clone_path/.git" ]; then
         echo "==> Project '$clone_name' already cloned, skipping."
@@ -190,7 +190,7 @@ setup_project() {
     echo "==> Adding GitHub to known_hosts for '$user'..."
     su - "$user" -c "mkdir -p ~/.ssh && ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null"
 
-    echo "==> Cloning '$GIT_CLONE_URL' into projectspace/$clone_name..."
+    echo "==> Cloning '$GIT_CLONE_URL' into $PROJECTSPACE_DIR/$clone_name..."
     mkdir -p "$clone_path"
     chown "$user":"$user" "$clone_path"
     su - "$user" -c "git clone '$GIT_CLONE_URL' '$clone_path'"
@@ -217,7 +217,7 @@ setup_workspace_group() {
         echo "    Done."
     fi
 
-    chown :"$group" /mydockerspace
-    chmod g+ws /mydockerspace
-    echo "==> /mydockerspace is group-writable by '$group'."
+    chown :"$group" "$CONTAINER_WORKDIR"
+    chmod g+ws "$CONTAINER_WORKDIR"
+    echo "==> $CONTAINER_WORKDIR is group-writable by '$group'."
 }

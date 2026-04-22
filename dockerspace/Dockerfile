@@ -1,5 +1,6 @@
 FROM ubuntu:24.04
 
-WORKDIR /mydockerspace
+ARG CONTAINER_WORKDIR=/mydockerspace
+WORKDIR $CONTAINER_WORKDIR
 
 CMD ["bash"]
