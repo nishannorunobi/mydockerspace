@@ -8,9 +8,8 @@ docker build -t "$IMAGE_NAME" .
 echo "Starting container: $CONTAINER_NAME..."
 docker run -d \
     --name "$CONTAINER_NAME" \
-    -v "$(pwd)":/mydockerspace \
-    -v /dev/null:/mydockerspace/start.sh \
-    -v /dev/null:/mydockerspace/stop.sh \
+    -v "$(pwd)/git-ignore-resources":/mydockerspace/git-ignore-resources \
+    -v "$(pwd)/claude":/mydockerspace/claude \
     "$IMAGE_NAME" \
     tail -f /dev/null
 

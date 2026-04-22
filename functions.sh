@@ -67,6 +67,8 @@ cleanup_pkg_cache() {
 
 install_packages() {
     echo "==> Installing packages..."
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=America/New_York
     update_pkg_index
     install_pkg git              "$GIT_VERSION"
     install_pkg build-essential  "$BUILD_ESSENTIAL_VERSION"
