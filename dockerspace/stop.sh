@@ -9,8 +9,8 @@ echo "Removing container: $CONTAINER_NAME..."
 docker rm "$CONTAINER_NAME" 2>/dev/null
 
 if [ "$REMOVE_IMAGE_ON_STOP" = true ]; then
-    echo "Removing image: $IMAGE_NAME..."
-    docker rmi "$IMAGE_NAME" 2>/dev/null
+    echo "Removing image: $IMAGE_NAME:$IMAGE_VERSION..."
+    docker rmi "$IMAGE_NAME:$IMAGE_VERSION" 2>/dev/null
 fi
 
 if [ "$CLEAN_VSCODE_CACHE_ON_STOP" = true ]; then

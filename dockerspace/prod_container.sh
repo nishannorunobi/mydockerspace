@@ -25,6 +25,7 @@ if [ "$INSTALL_CLAUDE_CLI" = true ]; then
     echo "──── Setting up Claude Code CLI ────"
     install_node
     install_claude_cli
+    setup_claude_config_container "$USER"
 fi
 
 echo ""

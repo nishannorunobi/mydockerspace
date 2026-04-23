@@ -66,7 +66,6 @@ start_daemon_linux() {
     if command -v systemctl &>/dev/null && systemctl list-units --type=service &>/dev/null 2>&1; then
         echo "==> Starting Docker daemon via systemctl..."
         sudo systemctl start docker
-        sudo systemctl enable docker
     elif command -v service &>/dev/null; then
         echo "==> Starting Docker daemon via service..."
         sudo service docker start

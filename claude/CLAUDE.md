@@ -14,8 +14,10 @@ The host and container each have their own git clone of the repo. They sync via 
 
 ## Architecture
 
-### Single config file: `dockerspace/workspace.conf`
-All configuration lives here — Docker settings, package manager, git identity, SSH mode, package versions. Both host scripts and container scripts source this file. Never split it back into multiple files.
+### Config files
+- `dockerspace/workspace.conf` — Docker settings, package manager, git identity, SSH mode, package versions. Host + container scripts source this.
+- `claude/claude.conf` — Claude-specific settings: `INSTALL_CLAUDE_CLI`, `COPY_CLAUDE_CONFIG`, `NODE_VERSION`. Sourced by `claude_cli.sh`.
+- `project.conf` — Project-specific settings: `GIT_CLONE_URL`, `PROJECT_NAME`, project tool versions. Sourced by `functions.sh`.
 
 ### Shared function library: `dockerspace/functions.sh`
 A pure library — defines functions only, never run directly. Sourced by container scripts.
@@ -51,7 +53,7 @@ Setup order per script: `install_packages` → `setup_user` → SSH → `setup_g
 | `dockerspace/check_hostdocker.sh` | Host | Installs Docker if missing, starts daemon if stopped |
 | `dockerspace/troubleshoot.sh` | Host | Creates and fixes ownership of `mountspace/` |
 | `dockerspace/myworkspace_struct.sh` | Host | Creates any missing workspace directories (idempotent) |
-| `claude/claude_cli.sh` | Container | `install_node` + `install_claude_cli` functions — sourced by container scripts |
+| `claude/claude_cli.sh` | Host + Container | `install_node`, `install_claude_cli`, `setup_claude_config_host`, `setup_claude_config_container` — sourced by container scripts, run directly on host to launch Claude |
 | `claude/start_claude.sh` | Container | Launches the claude binary |
 | `claude/stop_claude.sh` | Container | Kills the claude process |
 

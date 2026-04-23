@@ -24,7 +24,8 @@ ensure_dir() {
 ensure_dir "$WORKSPACE_ROOT/.vscode"              ".vscode/"
 ensure_dir "$WORKSPACE_ROOT/claude"               "claude/"
 ensure_dir "$WORKSPACE_ROOT/dockerspace"          "dockerspace/"
-ensure_dir "$WORKSPACE_ROOT/$PROJECTSPACE_DIR"    "$PROJECTSPACE_DIR/  (gitignored)"
-ensure_dir "$WORKSPACE_ROOT/$MOUNTSPACE_DIR"      "$MOUNTSPACE_DIR/    (gitignored)"
+ensure_dir "$WORKSPACE_ROOT/$PROJECTSPACE_DIR"          "$PROJECTSPACE_DIR/          (gitignored)"
+ensure_dir "$WORKSPACE_ROOT/$MOUNTSPACE_DIR"            "$MOUNTSPACE_DIR/            (gitignored)"
+ensure_dir "$WORKSPACE_ROOT/claude/.claude-config"      "claude/.claude-config/      (gitignored)"
 
 echo "==> Workspace structure OK."
