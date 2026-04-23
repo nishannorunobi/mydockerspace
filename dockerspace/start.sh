@@ -5,7 +5,7 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/workspace.conf"
 
-bash "$SCRIPT_DIR/myworkspace_struct.sh"
+bash "$WORKSPACE_ROOT/myworkspace_struct.sh"
 
 HOST_PLUGINS="$HOME/.docker/cli-plugins"
 SHARED_PLUGINS="$WORKSPACE_ROOT/$DOCKER_PLUGINS_DIR"

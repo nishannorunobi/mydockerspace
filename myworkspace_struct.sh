@@ -3,9 +3,9 @@
 # Safe to run multiple times. Creates any missing directories.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$SCRIPT_DIR"
 
-source "$SCRIPT_DIR/workspace.conf"
+source "$SCRIPT_DIR/dockerspace/workspace.conf"
 
 echo "==> Checking workspace structure at: $WORKSPACE_ROOT"
 

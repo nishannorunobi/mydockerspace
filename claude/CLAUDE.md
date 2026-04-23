@@ -52,7 +52,7 @@ Setup order per script: `install_packages` → `setup_user` → SSH → `setup_g
 | `dockerspace/stop.sh` | Host | Stops and removes container + image |
 | `dockerspace/check_hostdocker.sh` | Host | Installs Docker if missing, starts daemon if stopped |
 | `dockerspace/troubleshoot.sh` | Host | Creates and fixes ownership of `mountspace/` |
-| `dockerspace/myworkspace_struct.sh` | Host | Creates any missing workspace directories (idempotent) |
+| `myworkspace_struct.sh` | Host | Creates any missing workspace directories (idempotent) |
 | `dockerspace/docker_backup.sh` | Host | Commits running container state → current image tag (preserves installed packages, symlinks) |
 | `claude/claude_cli.sh` | Host + Container | `install_node`, `install_claude_cli`, `setup_claude_config_host`, `setup_claude_config_container` — sourced by container scripts, run directly on host to launch Claude |
 | `claude/start_claude.sh` | Container | Launches the claude binary |
@@ -70,6 +70,7 @@ myworkspace/                    ← workspace root, mounted as $CONTAINER_WORKDI
 │   ├── docker-plugins/         ← shared Docker CLI plugins (host + all container users symlink here)
 │   └── vscode-server-extensions/ ← shared VS Code Server extensions (copied from host, container users symlink here)
 ├── README.md
+├── myworkspace_struct.sh       ← creates any missing workspace directories (idempotent)
 ├── claude/                     ← Claude Code CLI
 │   ├── CLAUDE.md
 │   ├── claude_cli.sh
@@ -87,8 +88,7 @@ myworkspace/                    ← workspace root, mounted as $CONTAINER_WORKDI
 │   ├── start.sh
 │   ├── stop.sh
 │   ├── check_hostdocker.sh
-│   ├── troubleshoot.sh
-│   └── myworkspace_struct.sh
+│   └── troubleshoot.sh
 ├── $PROJECTSPACE_DIR/          ← gitignored, for user's subprojects
 └── $MOUNTSPACE_DIR/            ← gitignored, for local files/media never committed
 ```
