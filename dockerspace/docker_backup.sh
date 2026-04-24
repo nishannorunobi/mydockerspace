@@ -3,6 +3,7 @@
 # Increments the minor version (e.g. 1.0 → 1.1), updates workspace.conf, and commits.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/project.conf"
 source "$SCRIPT_DIR/workspace.conf"
 
 if ! docker container inspect "$CONTAINER_NAME" &>/dev/null; then

@@ -5,6 +5,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+source "$SCRIPT_DIR/project.conf"
 source "$SCRIPT_DIR/workspace.conf"
 
 echo "==> Running troubleshoot fixes for: $WORKSPACE_ROOT"

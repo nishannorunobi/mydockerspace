@@ -3,8 +3,8 @@
 # Provides: install_packages, setup_user, setup_ssh, setup_git, setup_workspace_group
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workspace.conf"
 source "$SCRIPT_DIR/project.conf"
+source "$SCRIPT_DIR/workspace.conf"
 
 # ─── Package management ────────────────────────────────────────────────────────
 
@@ -182,7 +182,7 @@ setup_project() {
 
     local repo_name
     repo_name=$(basename "$GIT_CLONE_URL" .git)
-    local clone_name="${PROJECT_NAME:-$repo_name}"
+    local clone_name="$repo_name"
     local clone_path="$CONTAINER_WORKDIR/$PROJECTSPACE_DIR/$clone_name"
 
     if [ -d "$clone_path/.git" ]; then

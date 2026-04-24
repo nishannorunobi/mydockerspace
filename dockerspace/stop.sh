@@ -1,5 +1,6 @@
 #!/bin/bash
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/project.conf"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/workspace.conf"
 
 echo "Stopping container: $CONTAINER_NAME..."
