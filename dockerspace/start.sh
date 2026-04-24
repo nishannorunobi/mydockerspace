@@ -4,6 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/workspace.conf"
+source "$SCRIPT_DIR/project.conf"
 
 bash "$WORKSPACE_ROOT/myworkspace_struct.sh"
 
@@ -39,7 +40,9 @@ if docker image inspect "$FULL_IMAGE" &>/dev/null; then
     echo "Image $FULL_IMAGE already exists, skipping build."
 else
     echo "Building image $FULL_IMAGE..."
-    docker build --build-arg CONTAINER_WORKDIR="$CONTAINER_WORKDIR" \
+    docker build \
+        --build-arg BASE_IMAGE="${BASE_IMAGE:-ubuntu:24.04}" \
+        --build-arg CONTAINER_WORKDIR="$CONTAINER_WORKDIR" \
         -t "$FULL_IMAGE" "$SCRIPT_DIR"
 fi
 
