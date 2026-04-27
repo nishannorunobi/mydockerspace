@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-WORKSPACE_ROOT = Path(__file__).parent.parent
+WORKSPACE_ROOT = Path(__file__).parent.parent.parent.parent  # workspace/→agents/→workspace-agent/→myworkspace/
 AGENT_DIR      = Path(__file__).parent
 MEMORY_DIR     = AGENT_DIR / "memory"
 
@@ -200,6 +200,8 @@ def execute_tool(name: str, inp: dict) -> dict:
         return {"diff": out or "no changes"}
 
     if name == "write_memory":
+        if "content" not in inp:
+            return {"error": "write_memory called without 'content' field"}
         MEMORY_DIR.mkdir(exist_ok=True)
         filepath = MEMORY_DIR / inp["filename"]
         mode     = "a" if inp.get("append") else "w"

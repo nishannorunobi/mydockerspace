@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workspace Dashboard</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="hdr">
+  <div class="hdr-title">⬡ Workspace Dashboard</div>
+  <div class="hdr-sep"></div>
+  <span class="hdr-stat" id="stat-running">— agents</span>
+  <span class="monitor-badge off" id="monitor-badge">● MONITOR OFF</span>
+  <button class="hdr-btn" onclick="window._dash.openSettings()">⚙ Alerts</button>
+</div>
+
+<!-- ── Alert banner container (injected by AlertSystem) ── -->
+<div id="alert-container"></div>
+
+<!-- ── Body ── -->
+<div class="body">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-section">Agents</div>
+    <div id="sidebar-agents">
+      <div style="padding:10px 12px;color:var(--text3);font-size:11px">Loading…</div>
+    </div>
+    <div class="sidebar-section">Alert History</div>
+    <div id="alert-history">
+      <div style="padding:8px 12px;color:var(--text3);font-size:11px">No alerts yet.</div>
+    </div>
+  </div>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- View toggle toolbar -->
+    <div class="view-toggle">
+      <button class="vbtn active" data-view="grid"   onclick="window._dash.showGrid()">Grid View</button>
+      <button class="vbtn"        data-view="detail" onclick="">Detail</button>
+    </div>
+
+    <!-- ── Grid view ── -->
+    <div class="grid-view" id="grid-view">
+      <!-- agent cards injected by _renderGrid() -->
+    </div>
+
+    <!-- ── Detail view (hidden until agent selected) ── -->
+    <div class="detail-view hidden" id="detail-view">
+
+      <!-- Detail header -->
+      <div class="detail-hdr">
+        <div class="dot lg unknown" id="detail-dot"></div>
+        <div class="detail-info">
+          <div class="detail-name" id="detail-name"></div>
+          <div class="detail-sub"  id="detail-sub"></div>
+        </div>
+        <div class="detail-btns">
+          <button class="btn btn-back"  onclick="window._dash.showGrid()">← Grid</button>
+          <button class="btn btn-start" id="btn-start" onclick="window._dash.startAgent()">Start</button>
+          <button class="btn btn-stop"  id="btn-stop"  onclick="window._dash.stopAgent()">Stop</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" data-tab="chat" onclick="window._dash.switchTab('chat')">Chat</div>
+        <div class="tab"        data-tab="logs" onclick="window._dash.switchTab('logs')">Logs</div>
+        <div class="tab"        data-tab="mem"  onclick="window._dash.switchTab('mem')">Memory</div>
+      </div>
+
+      <!-- Panes -->
+      <div class="panes">
+
+        <!-- Chat pane -->
+        <div class="pane active" id="pane-chat">
+          <div class="chat-msgs" id="chat-msgs"></div>
+          <div class="input-row">
+            <input id="chat-in" type="text" placeholder="Send a message to this agent…">
+            <button class="btn-send" id="btn-send">Send</button>
+          </div>
+        </div>
+
+        <!-- Logs pane -->
+        <div class="pane" id="pane-logs">
+          <div class="log-stream" id="log-stream"></div>
+        </div>
+
+        <!-- Memory pane -->
+        <div class="pane" id="pane-mem">
+          <div class="mem-split">
+            <div class="mem-list" id="mem-list"></div>
+            <div class="mem-body" id="mem-body">Select a memory file to view it.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Change bar ── -->
+    <div class="change-bar">
+      <div class="change-bar-hdr" onclick="window._dash.toggleChanges()">
+        <span>Live Changes</span>
+        <span class="ch-count" id="ch-count">0</span>
+        <span class="ch-toggle" id="ch-toggle">▴</span>
+      </div>
+      <div class="change-feed" id="change-feed"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Settings modal ── -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+
+    <div class="modal-hdr">
+      Alert Settings
+      <div class="modal-hdr-sep"></div>
+      <button class="modal-close" onclick="window._dash.closeSettings()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Global -->
+      <div class="setting-row">
+        <div class="setting-label">
+          Alerts enabled
+          <div class="setting-sub">Master switch for all alert sounds and notifications</div>
+        </div>
+        <input type="checkbox" id="s-enabled" checked>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          Volume
+          <div class="setting-sub">Alert sound volume</div>
+        </div>
+        <input type="range" id="s-volume" min="0" max="100" value="70">
+        <span class="text3" id="s-vol-val" style="width:32px;text-align:right">70%</span>
+      </div>
+
+      <!-- agent_down rule -->
+      <div class="section-title">Agent Down</div>
+      <div class="setting-row">
+        <div class="setting-label">Enabled</div>
+        <input type="checkbox" id="s-agent_down-en" checked>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Sound</div>
+        <select id="s-agent_down-snd">
+          <option value="alarm">Alarm</option>
+          <option value="warning">Warning</option>
+          <option value="info">Info</option>
+          <option value="none">None</option>
+        </select>
+        <button class="btn-test" onclick="window._dash.testAlert('agent_down')">Test</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Duration (seconds)</div>
+        <input type="number" id="s-agent_down-dur" value="10" min="1" max="60"
+               style="width:60px;background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:3px 6px;border-radius:4px;font-family:var(--font);font-size:12px">
+      </div>
+
+      <!-- agent_recovered rule -->
+      <div class="section-title">Agent Recovered</div>
+      <div class="setting-row">
+        <div class="setting-label">Enabled</div>
+        <input type="checkbox" id="s-agent_recovered-en" checked>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Sound</div>
+        <select id="s-agent_recovered-snd">
+          <option value="info">Info</option>
+          <option value="warning">Warning</option>
+          <option value="alarm">Alarm</option>
+          <option value="none">None</option>
+        </select>
+        <button class="btn-test" onclick="window._dash.testAlert('agent_recovered')">Test</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Duration (seconds)</div>
+        <input type="number" id="s-agent_recovered-dur" value="2" min="1" max="60"
+               style="width:60px;background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:3px 6px;border-radius:4px;font-family:var(--font);font-size:12px">
+      </div>
+
+      <!-- workspace_anomaly rule -->
+      <div class="section-title">Workspace Anomaly</div>
+      <div class="setting-row">
+        <div class="setting-label">Enabled</div>
+        <input type="checkbox" id="s-workspace_anomaly-en" checked>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Sound</div>
+        <select id="s-workspace_anomaly-snd">
+          <option value="warning">Warning</option>
+          <option value="alarm">Alarm</option>
+          <option value="info">Info</option>
+          <option value="none">None</option>
+        </select>
+        <button class="btn-test" onclick="window._dash.testAlert('workspace_anomaly')">Test</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Duration (seconds)</div>
+        <input type="number" id="s-workspace_anomaly-dur" value="5" min="1" max="60"
+               style="width:60px;background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:3px 6px;border-radius:4px;font-family:var(--font);font-size:12px">
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="window._dash.closeSettings()">Cancel</button>
+      <button class="btn-save"   onclick="window._dash.saveSettings()">Save</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── JS modules (order matters) ── -->
+<script src="/static/js/sounds.js"></script>
+<script src="/static/js/alerts.js"></script>
+<script src="/static/js/events.js"></script>
+<script src="/static/js/dashboard.js"></script>
+
+</body>
+</html>

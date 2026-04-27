@@ -17,7 +17,7 @@ source agent.conf
 [ -n "${ANTHROPIC_API_KEY:-}" ] || { echo -e "${RED}[ERROR]${RESET} ANTHROPIC_API_KEY not set in agent.conf"; exit 1; }
 
 if [ $# -gt 0 ]; then
-    .venv/bin/python agent.py "$@"
+    .venv/bin/python agents/workspace/agent.py "$@"
 else
-    .venv/bin/python agent.py
+    .venv/bin/python agents/workspace/agent.py
 fi

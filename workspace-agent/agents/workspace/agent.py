@@ -7,9 +7,11 @@ from datetime import datetime
 import anthropic
 from dotenv import load_dotenv
 from tools import TOOL_DEFINITIONS, execute_tool, MEMORY_DIR, WORKSPACE_ROOT
+from monitor import WorkspaceMonitor
 
 AGENT_DIR = Path(__file__).parent
-load_dotenv(AGENT_DIR / "agent.conf")
+ROOT_DIR  = AGENT_DIR.parent.parent  # workspace-agent/
+load_dotenv(ROOT_DIR / "agent.conf")
 
 SYSTEM_PROMPT = f"""You are a Workspace Management Agent for a Docker-based development workspace.
 
@@ -44,7 +46,6 @@ PROJECT CONVENTIONS (always enforce):
 - No hardcoded IPs — use container names on shared networks
 
 YOUR RESPONSIBILITIES:
-
 1. OBSERVE — Scan structure and git history to understand current state
 2. REMEMBER — Always save key observations to memory/ before ending a session
 3. DETECT — Flag abnormal changes: mass deletions, structural rewrites, files in wrong places,
@@ -65,7 +66,7 @@ WHAT COUNTS AS ABNORMAL:
 MEMORY FILES YOU MAINTAIN:
 - workspace_structure.md — last known directory tree snapshot
 - projects.md            — per-project knowledge (purpose, stack, status, conventions)
-- change_log.md          — log of notable changes with dates
+- change_log.md          — log of notable changes with dates (also auto-updated by monitor)
 - concerns.md            — open issues and flagged anomalies
 - sessions.md            — log of agent sessions
 - meta.json              — machine-readable summary for other agents
@@ -77,13 +78,13 @@ IMPORTANT:
 - Keep meta.json current — other agents depend on it
 """
 
-BOLD  = "\033[1m"
-GREEN = "\033[32m"
-RED   = "\033[31m"
-CYAN  = "\033[36m"
-DIM   = "\033[2m"
+BOLD   = "\033[1m"
+GREEN  = "\033[32m"
+RED    = "\033[31m"
+CYAN   = "\033[36m"
+DIM    = "\033[2m"
 YELLOW = "\033[33m"
-RESET = "\033[0m"
+RESET  = "\033[0m"
 
 
 def print_tool_call(name: str, inp: dict):
@@ -97,8 +98,7 @@ def print_tool_call(name: str, inp: dict):
     elif name in ("write_memory", "read_memory"):
         print(inp.get("filename", ""))
     elif name == "update_meta":
-        keys = list(inp.get("meta", {}).keys())
-        print(f"keys={keys}")
+        print(f"keys={list(inp.get('meta', {}).keys())}")
     else:
         print()
 
@@ -136,7 +136,6 @@ def log_session(note: str):
 
 def run_agent(user_message: str, history: list) -> list:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
     history.append({"role": "user", "content": user_message})
     print(f"\n{BOLD}You:{RESET} {user_message}\n")
 
@@ -189,27 +188,34 @@ def chat_loop():
     print(f"{BOLD}║     {str(WORKSPACE_ROOT):<38}║{RESET}")
     print(f"{BOLD}╚══════════════════════════════════════════╝{RESET}")
     print(f"{DIM}Type your request or 'exit' to quit.{RESET}")
-    print(f"{DIM}Suggested: 'scan and update memory' | 'check for issues' | 'what changed recently?'{RESET}\n")
+    print(f"{DIM}Suggested: 'scan and update memory' | 'check for issues' | 'what changed recently?'{RESET}")
+    print(f"{DIM}Background monitor active — silently tracking workspace changes every {WorkspaceMonitor.INTERVAL}s.{RESET}\n")
+
+    monitor = WorkspaceMonitor(workspace_root=WORKSPACE_ROOT, memory_dir=MEMORY_DIR)
+    monitor.start()
 
     log_session("session started")
     history = []
 
-    while True:
-        try:
-            user_input = input(f"{BOLD}>{RESET} ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print(f"\n{DIM}Session ended.{RESET}")
-            log_session("session ended by user")
-            break
+    try:
+        while True:
+            try:
+                user_input = input(f"{BOLD}>{RESET} ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print(f"\n{DIM}Session ended.{RESET}")
+                log_session("session ended by user")
+                break
 
-        if not user_input:
-            continue
-        if user_input.lower() in ("exit", "quit"):
-            log_session("session ended")
-            print("Bye.")
-            break
+            if not user_input:
+                continue
+            if user_input.lower() in ("exit", "quit"):
+                log_session("session ended")
+                print("Bye.")
+                break
 
-        history = run_agent(user_input, history)
+            history = run_agent(user_input, history)
+    finally:
+        monitor.stop()
 
 
 if __name__ == "__main__":

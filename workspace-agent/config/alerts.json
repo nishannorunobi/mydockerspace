@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "volume": 0.7,
+  "rules": {
+    "agent_down": {
+      "enabled": true,
+      "sound": "alarm",
+      "duration": 10,
+      "severity": "critical"
+    },
+    "agent_recovered": {
+      "enabled": true,
+      "sound": "info",
+      "duration": 2,
+      "severity": "info"
+    },
+    "workspace_anomaly": {
+      "enabled": true,
+      "sound": "warning",
+      "duration": 5,
+      "severity": "warning"
+    }
+  }
+}

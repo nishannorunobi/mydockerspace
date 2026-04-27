@@ -1,5 +1,5 @@
 # Projects Knowledge Base
-_Last updated: 2026-04-27_
+_Last updated: 2026-04-27 (Session 3)_
 
 ---
 
@@ -49,7 +49,30 @@ _Last updated: 2026-04-27_
 
 ---
 
-## 4. claude-agent (AI Testing Agent)
+## 4. db-agent (Database Management Agent) 🆕 NEW
+- **Purpose:** AI agent that runs INSIDE the mypostgresql_db container to monitor, query and manage PostgreSQL
+- **Location:** `projectspace/mypostgresql_db/db-agent/`
+- **Stack:** Python, Anthropic Claude API, psycopg2 (connects on localhost:5432 as postgres superuser)
+- **Memory:** File-based JSON in `db-agent/memory/` — no external DB needed
+  - memory files: db_state.json, sessions.json, issues.json, schema_snapshot.json, connectivity.json
+- **Config:** `agent.conf` (gitignored), `agent.conf.example` (committed template)
+  - Keys: ANTHROPIC_API_KEY, DB credentials
+- **Script convention:**
+  - Root scripts: build.sh, start.sh, stop.sh, health.sh ⚠️ not in dockerspace/host_scripts/ — convention drift (see C-006 pattern)
+  - `dockerspace/container_scripts/start_agent.sh` ✅
+- **Tools the agent has:**
+  - pg_status, pg_start, pg_stop, pg_restart
+  - run_query (read-only), run_admin_query (write, guarded)
+  - check_connections, check_db_size, check_table_sizes, check_locks, check_slow_queries, check_replication
+  - scan_logs, run_shell (guarded)
+  - memory_read, memory_write, memory_list
+  - take_snapshot, load_snapshot
+- **Files:** agent.py, tools.py, requirements.txt
+- **Status:** 🆕 Newly created — structure in place, not yet running ⚠️ agent.conf not yet created (needs real keys)
+
+---
+
+## 5. claude-agent (AI Testing Agent)
 - **Purpose:** Claude API-powered agent that tests UMS endpoints and logs to PostgreSQL
 - **Location:** `projectspace/ai-agents/claude-agent/`
 - **Stack:** Python, Anthropic Claude API, PostgreSQL (psycopg2)
@@ -67,7 +90,7 @@ _Last updated: 2026-04-27_
 
 ---
 
-## 5. myapigw (API Gateway)
+## 6. myapigw (API Gateway)
 - **Purpose:** API gateway (APISIX planned)
 - **Git repo:** `git@github.com:nishannorunobi/myapigw.git`
 - **Stack:** TBD
@@ -75,7 +98,7 @@ _Last updated: 2026-04-27_
 
 ---
 
-## 6. pc-maker
+## 7. pc-maker
 - **Purpose:** PC setup scripts and OS configuration
 - **Stack:** Bash
 - **Contents:**
@@ -88,17 +111,17 @@ _Last updated: 2026-04-27_
 
 ---
 
-## 7. mywrites
+## 8. mywrites
 - **Purpose:** Academic writing projects
 - **Contents:**
   - `amazon/` — "quantum_machine_is_here" LaTeX paper, Python export, cover images, compiled PDF output
   - `springer/` — empty placeholder
-- **VS Code:** latex-workshop.latex.outDir configured to %DIR%/output (just added in .vscode/settings.json)
+- **VS Code:** latex-workshop.latex.outDir configured to %DIR%/output (in .vscode/settings.json)
 - **Status:** Active writing ✅
 
 ---
 
-## 8. workspace-agent (this agent)
+## 9. workspace-agent (this agent)
 - **Purpose:** Workspace Management Agent — observes, tracks, advises, maintains memory
 - **Location:** `workspace-agent/`
 - **Stack:** Python, Claude API

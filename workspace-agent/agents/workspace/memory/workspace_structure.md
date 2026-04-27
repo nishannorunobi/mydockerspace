@@ -1,5 +1,5 @@
 # Workspace Structure Snapshot
-_Last updated: 2026-04-27_
+_Last updated: 2026-04-27 (Session 3 — re-scan)_
 
 ```
 /home/nishan/myworkspace/
@@ -14,7 +14,7 @@ _Last updated: 2026-04-27_
 │   ├── functions.sh
 │   ├── os_explore.sh
 │   ├── project.conf                 ← PROJECT_NAME=mypostgresql_db (active workspace project)
-│   │                                  ⚠️ DIRTY: comment separator has stray "r" char (minor typo)
+│   │                                   ⚠️ DIRTY: comment separator has stray "r" char (minor typo)
 │   ├── restart_the_world.sh
 │   ├── start_docker_ui.sh
 │   ├── start_project_container.sh
@@ -41,7 +41,7 @@ _Last updated: 2026-04-27_
 │   │       │   ├── Dockerfile
 │   │       │   └── docker-compose.yml  ← uses ums-network, connects to ums-app + mypostgresql_db-container
 │   │       ├── host/
-│   │       │   ├── build.sh          ⚠️ ANOMALY: scripts also in host/ (outside dockerspace/host_scripts/)
+│   │       │   ├── build.sh          ⚠️ ANOMALY: duplicate scripts outside dockerspace/host_scripts/ (C-010)
 │   │       │   ├── health.sh
 │   │       │   ├── start.sh
 │   │       │   └── stop.sh
@@ -57,6 +57,19 @@ _Last updated: 2026-04-27_
 │   ├── myapigw/
 │   │   └── README.md                  ← stub only, not yet developed ⚠️ no dockerspace/
 │   ├── mypostgresql_db/
+│   │   ├── db-agent/                  ← 🆕 NEW: DB Management Agent (added this session)
+│   │   │   ├── memory/                ← persistent JSON memory store
+│   │   │   ├── dockerspace/
+│   │   │   │   └── container_scripts/
+│   │   │   │       └── start_agent.sh
+│   │   │   ├── agent.conf.example
+│   │   │   ├── agent.py
+│   │   │   ├── build.sh
+│   │   │   ├── health.sh
+│   │   │   ├── requirements.txt
+│   │   │   ├── start.sh
+│   │   │   ├── stop.sh
+│   │   │   └── tools.py
 │   │   ├── dockerspace/
 │   │   │   ├── container_scripts/
 │   │   │   │   └── db_ui.sh
@@ -80,7 +93,7 @@ _Last updated: 2026-04-27_
 │   │   └── readme.md
 │   ├── mywrites/
 │   │   ├── amazon/                    ← quantum_machine_is_here paper (LaTeX + Python)
-│   │   │   ├── images/                ← cover_page_v1.jpg/pdf/svg
+│   │   │   ├── images/                ← cover page assets
 │   │   │   ├── output/                ← compiled PDF + latex build artifacts
 │   │   │   ├── export_docx.py
 │   │   │   ├── install_latex.md
@@ -96,7 +109,7 @@ _Last updated: 2026-04-27_
 │   │   │   ├── boot_usbdrive.sh
 │   │   │   ├── check_usbdrive.sh
 │   │   │   ├── format_usbdrive.sh
-│   │   │   ├── linux-lite-7.8-64bit.iso  ⚠️ BINARY ISO in git-tracked-area
+│   │   │   ├── linux-lite-7.8-64bit.iso  ⚠️ BINARY ISO — should be in mountspace/ (C-011)
 │   │   │   ├── os_lookup.sh
 │   │   │   └── safely_remove_usbdrive.sh
 │   │   ├── pchealth/
@@ -126,11 +139,12 @@ _Last updated: 2026-04-27_
 │   │   ├── README.md
 │   │   ├── mvnw
 │   │   └── pom.xml
-│   └── mywritings.zip                 ⚠️ ANOMALY: binary zip in projectspace root
+│   └── mywritings.zip                 ⚠️ ANOMALY: binary zip in projectspace root (C-003)
 ├── workspace-agent/                   ← Workspace Management Agent (this agent)
 │   ├── memory/
 │   │   ├── change_log.md
 │   │   ├── concerns.md
+│   │   ├── db_agent_plan.md           ← 🆕 NEW: db-agent build plan (untracked)
 │   │   ├── gitignore_content.md
 │   │   ├── meta.json
 │   │   ├── projects.md
@@ -158,5 +172,9 @@ _Last updated: 2026-04-27_
 - Portainer: http://localhost:9000
 - workspace-agent/ is untracked (gitignored)
 - .claude/ untracked (gitignored)
-- .vscode/settings.json: DIRTY — added latex-workshop.latex.outDir setting (uncommitted)
-- dockerspace/project.conf: DIRTY — stray "r" character in comment separator line (uncommitted)
+- Git status DIRTY: `dockerspace/project.conf` (stray "r" typo), `workspace-agent/memory/sessions.md` (modified)
+- `workspace-agent/memory/db_agent_plan.md` is untracked (new file this session)
+
+## New Since Last Session
+- `projectspace/mypostgresql_db/db-agent/` — full db-agent project added (agent.py, tools.py, build/start/stop/health.sh, memory/, dockerspace/container_scripts/)
+- `workspace-agent/memory/db_agent_plan.md` — plan document for db-agent

@@ -24,7 +24,10 @@
       "Bash(dpkg -l libreoffice-core)",
       "Bash(pandoc /tmp/test_book.odt -o /tmp/test_book.docx)",
       "Bash(python3 -c ' *)",
-      "Bash(chmod +x /home/nishan/myworkspace/projectspace/mypostgresql_db/dockerspace/start.sh /home/nishan/myworkspace/projectspace/mypostgresql_db/dockerspace/stop.sh)"
+      "Bash(chmod +x /home/nishan/myworkspace/projectspace/mypostgresql_db/dockerspace/start.sh /home/nishan/myworkspace/projectspace/mypostgresql_db/dockerspace/stop.sh)",
+      "Bash(git mv *)",
+      "Bash(git -C /home/nishan/myworkspace status --short workspace-agent/)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(a['id'], a['status'], a['mem_files'][:2]\\) for a in d['agents']]\")"
     ]
   }
 }
