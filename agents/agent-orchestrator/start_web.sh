@@ -38,4 +38,6 @@ echo -e "  Press Ctrl+C to stop.\n"
     --host "$HOST" \
     --port "$PORT" \
     --log-level "$LOG_LEVEL" \
-    2>&1 | tee -a "$LOG_FILE"
+    --access-log \
+    --no-use-colors \
+    2>&1 | awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0; fflush() }' | tee -a "$LOG_FILE"

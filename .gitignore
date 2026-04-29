@@ -2,3 +2,13 @@ claude/
 projectspace/
 mountspace/
 .vscode
+
+# Python — never commit venvs or bytecode
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+logs/
+*.log

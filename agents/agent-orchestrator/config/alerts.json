@@ -5,7 +5,7 @@
     "agent_down": {
       "enabled": true,
       "sound": "alarm",
-      "duration": 10,
+      "duration": 5,
       "severity": "critical"
     },
     "agent_recovered": {

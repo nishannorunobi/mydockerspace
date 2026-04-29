@@ -307,3 +307,197 @@ _Tracks notable workspace changes with dates_
   -  D workspace-agent/stop.sh
   - ?? agents/
   - M .claude/settings.json
+
+---
+**2026-04-28 11:55:48** — auto-detected
+  - A  agents/.gitignore
+  - A  agents/dashboard-agent/build.sh
+  - A  agents/dashboard-agent/health.sh
+  - A  agents/dashboard-agent/routers/agents.py
+  - A  agents/dashboard-agent/routers/alerts.py
+  - A  agents/dashboard-agent/routers/chat.py
+  - A  agents/dashboard-agent/routers/events.py
+  - A  agents/dashboard-agent/server.conf
+  - A  agents/dashboard-agent/server.py
+  - A  agents/dashboard-agent/start_web.sh
+  - A  agents/dashboard-agent/stop.sh
+  - A  agents/workspace-agent/.gitignore
+  - A  agents/workspace-agent/health.sh
+  - A  agents/workspace-agent/requirements.txt
+  - A  agents/workspace-agent/workspace/__init__.py
+  - D  workspace-agent/health.sh
+  - D  workspace-agent/server.py
+  - D  workspace-agent/start_web.sh
+  - M  .claude/settings.json
+  - R  workspace-agent/.gitignore -> agents/dashboard-agent/.gitignore
+  - R  workspace-agent/agent.conf.example -> agents/shared.conf.example
+  - R  workspace-agent/agent_registry.py -> agents/dashboard-agent/agent_registry.py
+  - R  workspace-agent/agents/__init__.py -> agents/dashboard-agent/routers/__init__.py
+  - R  workspace-agent/agents/workspace/__init__.py -> agents/workspace-agent/__init__.py
+  - R  workspace-agent/agents/workspace/agent.py -> agents/workspace-agent/workspace/agent.py
+  - R  workspace-agent/agents/workspace/memory/change_log.md -> agents/workspace-agent/workspace/memory/change_log.md
+  - R  workspace-agent/agents/workspace/memory/concerns.md -> agents/workspace-agent/workspace/memory/concerns.md
+  - R  workspace-agent/agents/workspace/memory/db_agent_plan.md -> agents/workspace-agent/workspace/memory/db_agent_plan.md
+  - R  workspace-agent/agents/workspace/memory/gitignore_content.md -> agents/workspace-agent/workspace/memory/gitignore_content.md
+  - R  workspace-agent/agents/workspace/memory/meta.json -> agents/workspace-agent/workspace/memory/meta.json
+  - R  workspace-agent/agents/workspace/memory/projects.md -> agents/workspace-agent/workspace/memory/projects.md
+  - R  workspace-agent/agents/workspace/memory/proposed_gitignore.md -> agents/workspace-agent/workspace/memory/proposed_gitignore.md
+  - R  workspace-agent/agents/workspace/memory/sessions.md -> agents/workspace-agent/workspace/memory/sessions.md
+  - R  workspace-agent/agents/workspace/memory/workspace_structure.md -> agents/workspace-agent/workspace/memory/workspace_structure.md
+  - R  workspace-agent/agents/workspace/monitor.py -> agents/workspace-agent/workspace/monitor.py
+  - R  workspace-agent/agents/workspace/prompt.md -> agents/workspace-agent/workspace/prompt.md
+  - R  workspace-agent/agents/workspace/tools.py -> agents/workspace-agent/workspace/tools.py
+  - R  workspace-agent/alert_engine.py -> agents/dashboard-agent/alert_engine.py
+  - R  workspace-agent/build.sh -> agents/workspace-agent/build.sh
+  - R  workspace-agent/config/alerts.json -> agents/dashboard-agent/config/alerts.json
+  - R  workspace-agent/requirements.txt -> agents/dashboard-agent/requirements.txt
+  - R  workspace-agent/start.sh -> agents/workspace-agent/start.sh
+  - R  workspace-agent/static/css/style.css -> agents/dashboard-agent/static/css/style.css
+  - R  workspace-agent/static/index.html -> agents/dashboard-agent/static/index.html
+  - R  workspace-agent/static/js/alerts.js -> agents/dashboard-agent/static/js/alerts.js
+  - R  workspace-agent/static/js/dashboard.js -> agents/dashboard-agent/static/js/dashboard.js
+  - R  workspace-agent/static/js/events.js -> agents/dashboard-agent/static/js/events.js
+  - R  workspace-agent/static/js/sounds.js -> agents/dashboard-agent/static/js/sounds.js
+  - R  workspace-agent/stop.sh -> agents/workspace-agent/stop.sh
+
+---
+**2026-04-28 11:56:03** — auto-detected
+  + M agents/workspace-agent/workspace/memory/change_log.md
+
+---
+**2026-04-28 11:58:16** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/change_log.md
+  + M agents/dashboard-agent/static/css/style.css
+  - M agents/workspace-agent/workspace/memory/change_log.md
+
+---
+**2026-04-28 11:59:16** — auto-detected
+  +  M agents/dashboard-agent/static/index.html
+
+---
+**2026-04-28 11:59:46** — auto-detected
+  +  M agents/dashboard-agent/static/css/style.css
+  + M agents/dashboard-agent/server.py
+  - M agents/dashboard-agent/static/css/style.css
+
+---
+**2026-04-28 12:02:40** — auto-detected
+  +  M agents/dashboard-agent/server.py
+  + M agents/dashboard-agent/agent_registry.py
+  - M agents/dashboard-agent/server.py
+
+---
+**2026-04-28 12:02:46** — auto-detected
+  +  M agents/dashboard-agent/server.py
+  + M agents/dashboard-agent/agent_registry.py
+  - M agents/dashboard-agent/server.py
+
+---
+**2026-04-28 12:05:01** — auto-detected
+  +  M agents/dashboard-agent/routers/agents.py
+
+---
+**2026-04-28 12:05:10** — auto-detected
+  +  M agents/dashboard-agent/routers/agents.py
+
+---
+**2026-04-28 12:09:25** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/sessions.md
+
+---
+**2026-04-28 13:09:11** — auto-detected
+  + ?? agents/dashboard-agent/agents.conf
+
+---
+**2026-04-28 13:09:56** — auto-detected
+  +  M agents/dashboard-agent/agent_registry.py
+  + M .claude/settings.json
+  - M agents/dashboard-agent/agent_registry.py
+
+---
+**2026-04-28 16:34:02** — auto-detected
+  +  M agents/dashboard-agent/routers/chat.py
+
+---
+**2026-04-28 16:37:14** — auto-detected
+  +  M agents/dashboard-agent/static/js/dashboard.js
+
+---
+**2026-04-28 16:37:17** — auto-detected
+  +  M agents/dashboard-agent/static/js/dashboard.js
+
+---
+**2026-04-28 16:52:59** — auto-detected
+  +  M agents/dashboard-agent/start_web.sh
+
+---
+**2026-04-28 16:52:59** — auto-detected
+  +  M agents/dashboard-agent/start_web.sh
+
+---
+**2026-04-28 17:02:31** — auto-detected
+  +  M agents/workspace-agent/health.sh
+
+---
+**2026-04-28 17:07:16** — auto-detected
+  +  M agents/workspace-agent/workspace/agent.py
+
+---
+**2026-04-28 17:07:31** — auto-detected
+  + ?? agents/workspace-agent/start_daemon.sh
+
+---
+**2026-04-28 17:10:17** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/daemon.log
+
+---
+**2026-04-29 18:31:31** — auto-detected
+  + ?? agents/docker-manager-agent/
+  - ?? agents/docker-orchestrator-agent/
+
+---
+**2026-04-29 18:54:22** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/concerns.md
+
+---
+**2026-04-29 18:54:25** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/concerns.md
+
+---
+**2026-04-29 19:09:33** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/meta.json
+
+---
+**2026-04-29 19:09:34** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/meta.json
+
+---
+*2026-04-29 19:11*
+
+
+## 2026-04-29 — Autonomous Maintenance Cycle #2
+
+**Health checks run — no files modified.**
+
+| Check | Result |
+|---|---|
+| workspace-agent health.sh | ✅ HEALTHY — daemon PID 151710 running |
+| agent-orchestrator health.sh | ✅ HEALTHY — port 8888 active, 694 log lines |
+| docker-manager-agent health.sh | ⚠️ HEALTHY (built) but port 8889 not started |
+| claude-agent health.sh | ❌ UNHEALTHY — PostgreSQL exited, DB schema missing |
+| db-agent health.sh | ⚠️ PostgreSQL not running, deps not installed |
+
+**Containers checked (docker ps -a):**
+- `ums-app` — Exited (143), ~47h ago (SIGTERM)
+- `mypostgresql_db-container` — Exited (137), ~2 days ago (SIGKILL/OOM)
+- `ums-network` — exists ✅
+
+**Syntax checks:** agent.py ✅, tools.py ✅, server.py ✅, project.conf ✅
+
+**Findings:**
+- C-002 partially resolved: `ums/.gitignore` confirmed to contain `.env` — no credential risk
+- C-015 NEW: Both core containers are down — owner action needed to restart
+- C-007 verified: stray `r` in project.conf line 17 is inside a comment — cosmetic, non-functional
+- Email notification attempted but SMTP credentials not configured (535 auth error)
+
+**No autonomous fixes applied this cycle.**

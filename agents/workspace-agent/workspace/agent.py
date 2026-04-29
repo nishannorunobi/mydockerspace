@@ -71,11 +71,17 @@ MEMORY FILES YOU MAINTAIN:
 - sessions.md            — log of agent sessions
 - meta.json              — machine-readable summary for other agents
 
+ACTIONS YOU CAN TAKE:
+- run_command   — run any Linux shell command; use to test, verify, and diagnose
+- write_file    — fix a broken file; always read first, change minimally, re-run to verify
+- send_email    — notify the owner; required after any autonomous fix or unresolvable issue
+
 IMPORTANT:
 - Always read relevant memory files before making assessments
 - Always save findings to memory before ending a session
 - Be specific in suggestions — name the file, the line, the pattern
 - Keep meta.json current — other agents depend on it
+- When running autonomously: fix only what is clearly broken; email the owner after every change
 """
 
 BOLD   = "\033[1m"
@@ -218,6 +224,54 @@ def chat_loop():
         monitor.stop()
 
 
+AUTONOMOUS_PROMPT = """You are running a scheduled autonomous maintenance cycle. Work through these steps:
+
+1. Run health checks — find and execute any health.sh scripts for active services (docker ps, ./health.sh, etc.)
+2. Check git status for recent uncommitted or suspicious changes
+3. If a command fails (non-zero exit code): read the relevant file, identify the exact problem, fix it with write_file, then re-run to confirm
+4. Only fix things you are certain about — wrong port, syntax error, missing directory, bad path. If unsure, log to concerns.md instead
+5. After any fix OR if you found an issue you could not resolve, send an email: what was broken, file changed, old vs new value, verification result
+6. Update sessions.md with a one-line summary of what happened this cycle
+
+Be minimal — do not reorganize, refactor, or improve things. Only fix actual failures."""
+
+
+def daemon_loop():
+    """Background mode: monitor + hourly autonomous AI maintenance cycle."""
+    import signal
+    import time
+
+    MEMORY_DIR.mkdir(exist_ok=True)
+    log_session("daemon started")
+
+    monitor = WorkspaceMonitor(workspace_root=WORKSPACE_ROOT, memory_dir=MEMORY_DIR)
+    monitor.start()
+
+    def _shutdown(sig, frame):
+        log_session("daemon stopped")
+        monitor.stop()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _shutdown)
+    signal.signal(signal.SIGINT,  _shutdown)
+
+    cycle_interval = int(os.environ.get("AGENT_CYCLE_INTERVAL", "3600"))
+    last_cycle = 0.0
+
+    while True:
+        now = time.time()
+        if now - last_cycle >= cycle_interval:
+            try:
+                run_agent(AUTONOMOUS_PROMPT, [])
+            except Exception as e:
+                entry = f"\n---\n**{datetime.now().strftime('%Y-%m-%d %H:%M')}** — autonomous cycle error: {e}"
+                sessions = MEMORY_DIR / "sessions.md"
+                existing = sessions.read_text() if sessions.exists() else "# Agent Sessions\n"
+                sessions.write_text(existing + entry)
+            last_cycle = time.time()
+        time.sleep(60)
+
+
 if __name__ == "__main__":
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print(f"{RED}Error:{RESET} ANTHROPIC_API_KEY not set in agent.conf")
@@ -225,7 +279,9 @@ if __name__ == "__main__":
 
     MEMORY_DIR.mkdir(exist_ok=True)
 
-    if len(sys.argv) > 1:
+    if "--daemon" in sys.argv:
+        daemon_loop()
+    elif len(sys.argv) > 1:
         run_agent(" ".join(sys.argv[1:]), [])
     else:
         chat_loop()

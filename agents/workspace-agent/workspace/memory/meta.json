@@ -8,7 +8,7 @@
   "workspace_image_version": "1.4",
   "workspace_base_image": "postgres:16",
   "workspace_pkg_manager": "apt",
-  "git_status": "dirty \u2014 2 uncommitted changes (dockerspace/project.conf, .vscode/settings.json)",
+  "git_status": "dirty \u2014 24 dashboard-agent deletions staged but uncommitted; workspace-agent files modified/untracked",
   "projects": {
     "ums": {
       "purpose": "Spring Boot 3 / Java 21 User Management System API",
@@ -62,17 +62,21 @@
       "status": "active"
     }
   },
-  "open_concerns": {
-    "C-001": "context.md is stale \u2014 references AlmaLinux9/dnf but workspace now uses postgres:16/apt",
-    "C-002": "ums docker-compose.yml uses .env file \u2014 verify it is gitignored",
-    "C-003": "projectspace/mywritings.zip is a binary in wrong location \u2014 should be in mountspace/",
-    "C-004": "myapigw has no dockerspace/ structure \u2014 convention violation",
-    "C-005": "pc-maker has no dockerspace/ \u2014 low risk but convention drift",
-    "C-006": "workspace-agent scripts not in dockerspace/host_scripts/ \u2014 convention drift",
-    "C-007": "Uncommitted changes: dockerspace/project.conf and .vscode/settings.json",
-    "C-008": "context.md references API-Gateway/APISIX as active but only stub exists",
-    "C-009": "mypostgresql_db EXPOSE_PORTS=8085:8085 but DB port is 5432 \u2014 inconsistency"
-  },
+  "open_concerns": [
+    "C-001",
+    "C-002",
+    "C-003",
+    "C-004",
+    "C-005",
+    "C-006",
+    "C-007",
+    "C-009",
+    "C-010",
+    "C-011",
+    "C-013",
+    "C-014",
+    "C-015"
+  ],
   "conventions": {
     "script_location": "project/dockerspace/host_scripts/ and container_scripts/",
     "required_scripts": [
@@ -87,5 +91,62 @@
     "no_env_files_in_git": true,
     "network": "ums-network (shared, external)"
   },
-  "last_updated": "2026-04-27T17:42:10.235228"
+  "last_updated": "2026-04-29T19:09:32.944718",
+  "last_maintenance_cycle": "2026-04-29",
+  "cycle_number": 2,
+  "overall_health": "DEGRADED",
+  "agents": {
+    "workspace-agent": {
+      "status": "HEALTHY",
+      "port": null,
+      "daemon": "running (PID 151710)"
+    },
+    "agent-orchestrator": {
+      "status": "HEALTHY",
+      "port": 8888
+    },
+    "docker-manager-agent": {
+      "status": "HEALTHY",
+      "port": 8889,
+      "note": "built but not started"
+    },
+    "claude-agent": {
+      "status": "UNHEALTHY",
+      "reason": "PostgreSQL exited, agent DB schema inaccessible"
+    },
+    "db-agent": {
+      "status": "NOT RUNNING",
+      "reason": "PostgreSQL not running, dependencies not installed, agent.conf missing"
+    }
+  },
+  "containers": {
+    "ums-app": {
+      "status": "exited",
+      "exit_code": 143,
+      "note": "~47h ago, clean SIGTERM shutdown"
+    },
+    "mypostgresql_db-container": {
+      "status": "exited",
+      "exit_code": 137,
+      "note": "~2 days ago, SIGKILL/OOM"
+    }
+  },
+  "docker_network": {
+    "ums-network": "exists"
+  },
+  "new_concerns_this_cycle": [
+    "C-015"
+  ],
+  "concerns_updated": [
+    "C-002 (gitignore verified)",
+    "C-012 (renamed: not-started not unbuilt)"
+  ],
+  "fixes_applied": [],
+  "action_required_by_owner": [
+    "Start mypostgresql_db-container: cd projectspace/mypostgresql_db/dockerspace/host_scripts && ./start.sh",
+    "Start ums-app: cd projectspace/ums/dockerspace/host_scripts && ./start_docker.sh",
+    "Start docker-manager-agent: cd agents/docker-manager-agent && ./start.sh",
+    "Commit pending changes: git add -A && git commit -m 'workspace-agent: daemon mode + remove stale dashboard-agent'",
+    "Update context.md (C-001 \u2014 still stale)"
+  ]
 }

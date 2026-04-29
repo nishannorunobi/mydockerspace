@@ -4,16 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Workspace Dashboard</title>
-<link rel="stylesheet" href="/static/css/style.css?v=3">
+<link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
 <!-- ── Header ── -->
 <div class="hdr">
-  <div class="hdr-title">⬡ Workspace Dashboard</div>
+  <div class="hdr-title">⬡ Agent Orchestrator</div>
   <div class="hdr-sep"></div>
   <span class="hdr-stat" id="stat-running">— agents</span>
   <span class="monitor-badge off" id="monitor-badge">● MONITOR OFF</span>
+  <button class="hdr-btn" onclick="window._tasks.open()">⊞ Tasks</button>
   <button class="hdr-btn" onclick="window._dash.openSettings()">⚙ Alerts</button>
 </div>
 
@@ -225,11 +226,33 @@
   </div>
 </div>
 
+<!-- ── Tasks modal ── -->
+<div class="modal-overlay hidden" id="tasks-modal">
+  <div class="modal" style="width:680px;max-width:95vw">
+
+    <div class="modal-hdr">
+      Tasks
+      <div class="modal-hdr-sep"></div>
+      <button class="modal-close" onclick="window._tasks.close()">✕</button>
+    </div>
+
+    <div class="modal-body" style="padding:0">
+      <div id="task-list" style="padding:12px 16px"></div>
+    </div>
+
+    <div class="modal-footer" style="justify-content:flex-start;gap:8px">
+      <span class="text3" style="font-size:11px">Defined in tasks.json · Scheduled tasks run automatically</span>
+    </div>
+
+  </div>
+</div>
+
 <!-- ── JS modules (order matters) ── -->
-<script src="/static/js/sounds.js?v=3"></script>
-<script src="/static/js/alerts.js?v=3"></script>
-<script src="/static/js/events.js?v=3"></script>
-<script src="/static/js/dashboard.js?v=3"></script>
+<script src="/static/js/sounds.js"></script>
+<script src="/static/js/alerts.js"></script>
+<script src="/static/js/events.js"></script>
+<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/tasks.js"></script>
 
 </body>
 </html>

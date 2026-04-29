@@ -1,7 +1,10 @@
 import asyncio
 import json
+import os
 import re
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -29,13 +32,30 @@ async def start_agent(agent_id: str):
         return JSONResponse({"error": "not found"}, status_code=404)
     loop = asyncio.get_event_loop()
     try:
-        if spec.type == "docker":
-            r = await loop.run_in_executor(None, lambda: subprocess.run(
-                ["docker", "start", spec.container],
-                capture_output=True, text=True, timeout=20,
-            ))
-            return {"ok": r.returncode == 0, "detail": r.stderr.strip() or "started"}
-        return {"ok": False, "detail": "Host agents start via terminal or ./start.sh"}
+        if spec.home and spec.start_script:
+            def _launch():
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".log", mode="w")
+                proc = subprocess.Popen(
+                    ["bash", spec.start_script],
+                    cwd=spec.home,
+                    stdin=subprocess.DEVNULL,
+                    stdout=tmp,
+                    stderr=tmp,
+                    start_new_session=True,
+                    env=os.environ.copy(),
+                )
+                tmp.close()
+                time.sleep(0.5)
+                rc = proc.poll()
+                if rc is not None:
+                    out = Path(tmp.name).read_text(errors="replace")
+                    return None, rc, _strip(out)
+                return proc.pid, None, None
+            pid, rc, out = await loop.run_in_executor(None, _launch)
+            if rc is not None:
+                return {"ok": False, "detail": f"Start script exited (code {rc})", "output": (out or "").strip()[:600]}
+            return {"ok": True, "detail": f"Started (PID {pid})"}
+        return {"ok": False, "detail": "start_script not configured for this agent"}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -47,13 +67,10 @@ async def stop_agent(agent_id: str):
         return JSONResponse({"error": "not found"}, status_code=404)
     loop = asyncio.get_event_loop()
     try:
-        if spec.type == "docker":
+        if spec.home and spec.stop_script:
             await loop.run_in_executor(None, lambda: subprocess.run(
-                ["docker", "stop", spec.container], capture_output=True, timeout=30,
-            ))
-        else:
-            await loop.run_in_executor(None, lambda: subprocess.run(
-                ["pkill", "-f", spec.host_script], capture_output=True, timeout=5,
+                ["bash", spec.stop_script],
+                cwd=spec.home, capture_output=True, timeout=15,
             ))
         return {"ok": True}
     except Exception as e:
@@ -63,17 +80,6 @@ async def stop_agent(agent_id: str):
 @router.get("/{agent_id}/logs/stream")
 async def stream_logs(agent_id: str):
     spec = registry.SPEC_BY_ID.get(agent_id)
-
-    async def docker_gen(container):
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "docker", "logs", "-f", "--tail", "100", container,
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
-            )
-            async for raw in proc.stdout:
-                yield f"data: {json.dumps({'line': _strip(raw.decode(errors='replace'))})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'line': f'[error] {e}\n'})}\n\n"
 
     async def file_gen(log_path: Path):
         if log_path.exists():
@@ -98,8 +104,6 @@ async def stream_logs(agent_id: str):
 
     if not spec:
         gen = empty_gen()
-    elif spec.type == "docker":
-        gen = docker_gen(spec.container)
     elif spec.log_file:
         gen = file_gen(Path(spec.log_file))
     else:

@@ -1,0 +1,44 @@
+{
+  "_comment": "Task definitions for the Agent Orchestrator. Edit this file to add, remove, or schedule tasks.",
+  "_schedule_values": "manual | on_start | interval:<seconds>",
+
+  "tasks": [
+
+    {
+      "id":          "workspace-health",
+      "name":        "Workspace Health Check",
+      "description": "Scan workspace structure, check git history for recent changes, flag any concerns, and update memory.",
+      "agent_id":    "workspace",
+      "schedule":    "manual",
+      "enabled":     true
+    },
+
+    {
+      "id":          "workspace-maintenance",
+      "name":        "Workspace Maintenance",
+      "description": "Run autonomous maintenance cycle: health checks on all services, fix any broken scripts, send email if changes were made.",
+      "agent_id":    "workspace",
+      "schedule":    "interval:3600",
+      "enabled":     false
+    },
+
+    {
+      "id":          "docker-status",
+      "name":        "Docker Status Report",
+      "description": "List all running and stopped Docker containers with CPU and memory usage. Report any containers that are down.",
+      "agent_id":    "docker",
+      "schedule":    "manual",
+      "enabled":     true
+    },
+
+    {
+      "id":          "docker-health-sweep",
+      "name":        "Docker Health Sweep",
+      "description": "Check all Docker containers, restart any that are stopped, and report what was fixed.",
+      "agent_id":    "docker",
+      "schedule":    "interval:1800",
+      "enabled":     false
+    }
+
+  ]
+}

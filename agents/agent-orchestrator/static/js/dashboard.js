@@ -125,7 +125,7 @@ class Dashboard {
     grid.innerHTML = '';
     for (const a of this._agents) {
       const card = document.createElement('div');
-      card.className = 'agent-card' + (this._selected === a.id ? ' selected' : '');
+      card.className = 'agent-card ' + a.status + (this._selected === a.id ? ' selected' : '');
       card.dataset.id = a.id;
       const statusLabel = { running: 'Running', stopped: 'Stopped', unavailable: 'Unavailable', unknown: 'Unknown' };
       const uptimeRow = a.status === 'running'
@@ -133,16 +133,12 @@ class Dashboard {
         : `<div class="stat-box"><div class="stat-label">Down since</div><div class="stat-value text2">${esc(a.downtime)}</div></div>`;
       card.innerHTML = `
         <div class="card-hdr">
-          <div class="dot lg ${a.status}"></div>
           <div class="card-name">${esc(a.name)}</div>
+          <span class="status-badge ${a.status}">${statusLabel[a.status] || a.status}</span>
           <span class="card-type">${a.type}</span>
         </div>
         <div class="card-desc">${esc(a.description)}</div>
         <div class="card-stats">
-          <div class="stat-box">
-            <div class="stat-label">Status</div>
-            <div class="stat-value ${a.status === 'running' ? 'green' : 'text2'}">${statusLabel[a.status] || a.status}</div>
-          </div>
           ${uptimeRow}
           <div class="stat-box">
             <div class="stat-label">Last check</div>
@@ -155,7 +151,6 @@ class Dashboard {
         </div>
         <div class="card-footer">
           <div class="dot ${a.status}"></div>
-          <span class="text3">${a.container || 'host'}</span>
           <button class="card-open-btn">Open →</button>
         </div>`;
       card.querySelector('.card-open-btn').onclick = (e) => { e.stopPropagation(); this.openDetail(a.id); };
@@ -218,7 +213,7 @@ class Dashboard {
     if (!agent) return;
     $('detail-dot').className   = `dot lg ${agent.status}`;
     $('detail-name').textContent = agent.name;
-    $('detail-sub').textContent  = `${agent.type} · ${agent.container || 'host'} · ${agent.status} · uptime: ${agent.uptime}`;
+    $('detail-sub').textContent  = `${agent.status} · uptime: ${agent.uptime}`;
     $('btn-start').disabled = agent.status === 'running';
     $('btn-stop').disabled  = agent.status !== 'running';
   }
@@ -234,8 +229,28 @@ class Dashboard {
   async startAgent() {
     if (!this._selected) return;
     $('btn-start').disabled = true;
-    await fetch(`/api/agents/${this._selected}/start`, { method: 'POST' }).catch(() => {});
+    try {
+      const res = await fetch(`/api/agents/${this._selected}/start`, { method: 'POST' });
+      const d   = await res.json();
+      if (d.ok === false) {
+        const msg = [d.detail, d.output].filter(Boolean).join('\n\n');
+        this._showStartError(msg || d.error || 'Start failed');
+        $('btn-start').disabled = false;
+        return;
+      }
+    } catch (_) {}
     setTimeout(() => this._fetchAgents().then(() => { this._renderGrid(); this._updateSidebar(); this._updateDetailHeader(); }), 2000);
+  }
+
+  _showStartError(msg) {
+    const existing = $('start-error-banner');
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.id        = 'start-error-banner';
+    div.className = 'start-error-banner';
+    div.textContent = msg;
+    $('detail-hdr').insertAdjacentElement('afterend', div);
+    setTimeout(() => div.remove(), 10000);
   }
 
   async stopAgent() {
@@ -268,6 +283,18 @@ class Dashboard {
 
   _handleChatMsg(msg) {
     const feed = $('chat-msgs');
+    if (msg.type === 'history_msg') {
+      const div = document.createElement('div');
+      div.className = 'msg history';
+      const roleLabel = msg.role === 'user' ? 'You' : 'Agent';
+      const roleClass = msg.role === 'user' ? 'user' : 'agent';
+      div.innerHTML = `<div class="msg-role ${roleClass}">${roleLabel}</div>`
+        + `<div class="msg-body">${esc(msg.content)}</div>`
+        + (msg.ts ? `<div class="msg-ts">${esc(msg.ts)}</div>` : '');
+      feed.appendChild(div);
+      scrollBot(feed);
+      return;
+    }
     if (msg.type === 'text') {
       feed.querySelector('.thinking-wrap')?.remove();
       if (!this._currentMsgEl) {

@@ -1,5 +1,5 @@
 # Open Concerns & Flagged Anomalies
-_Last updated: 2026-04-27 (Session 2 — re-scan)_
+_Last updated: 2026-04-29 (Autonomous maintenance cycle #2)_
 
 ---
 
@@ -12,58 +12,79 @@ _Last updated: 2026-04-27 (Session 2 — re-scan)_
 - **Fix:** Update context.md to reflect current state: postgres:16 base, apt pkg manager, IMAGE_VERSION=1.4, PROJECT_NAME=mypostgresql_db, container=ums-app
 - **Status:** OPEN — not fixed since Session 1
 
-### C-002 — UMS `docker-compose.yml` references `.env` file
+### C-002 — UMS `docker-compose.yml` references `.env` file ✅ PARTIALLY VERIFIED
 - **File:** `projectspace/ums/dockerspace/host_scripts/docker-compose.yml`
-- **Issue:** `env_file: ../../.env` — an `.env` file is used. Must verify it is gitignored and not committed.
-- **Risk:** Credential leak if `.env` was ever committed
-- **Fix:** Confirm `ums/.env` is in `.gitignore`. If not, add immediately. Consider switching to `ums/project.conf` pattern.
-- **Status:** OPEN — not verified since Session 1
+- **Issue:** `env_file: ../../.env` — an `.env` file is used.
+- **Verified 2026-04-29:** `ums/.gitignore` contains `.env` — credential leak risk is LOW. `.env` file exists on disk but is gitignored.
+- **Remaining action:** Consider switching to `ums/project.conf` pattern to align with workspace convention.
+- **Status:** PARTIALLY RESOLVED — gitignore confirmed; convention drift remains
 
 ---
 
 ## 🟡 MEDIUM PRIORITY
 
+### C-012 — `docker-manager-agent` not built — server not on port 8889
+- **File:** `agents/docker-manager-agent/`
+- **Issue:** health.sh shows WARN: "Server not responding on port 8889 — run ./start.sh". Agent has .venv and shared.conf but is NOT started.
+- **Update 2026-04-29 cycle #2:** health.sh now returns HEALTHY (exit 0) — .venv and keys exist. Agent simply needs `./start.sh` to be called.
+- **Risk:** Agent is idle, not monitoring Docker. Non-critical but unused capacity.
+- **Fix:** Run `cd agents/docker-manager-agent && ./start.sh`
+- **Status:** UPDATED — was C-012 "never built"; now built but not started. Owner decision to start.
+
+### C-013 — `dashboard-agent/` deleted from git index but not committed
+- **File:** `agents/dashboard-agent/` (24 files staged as deleted in git status)
+- **Context:** Commit `42656d6` moved dashboard-agent to `agents/agent-orchestrator/`. Deletions are correct but uncommitted.
+- **Risk:** Low — agent-orchestrator is HEALTHY on port 8888. But git index is dirty.
+- **Fix:** `git add -A && git commit -m "remove stale dashboard-agent path"`
+- **Status:** OPEN — still dirty as of 2026-04-29 cycle #2
+
+### C-014 — Several uncommitted modifications to workspace-agent
+- **Files:** `agents/workspace-agent/health.sh`, `workspace/agent.py`, `workspace/tools.py`, `workspace/memory/change_log.md`, `workspace/memory/concerns.md`, `workspace/memory/sessions.md`
+- **Untracked:** `agents/workspace-agent/start_daemon.sh`, `workspace/memory/daemon.log`
+- **Context:** Additive improvements — daemon loop, new tool defs, daemon PID check. Not breakage.
+- **Risk:** Changes lost on branch reset; `start_daemon.sh` not tracked by git
+- **Fix:** `git add agents/workspace-agent/ && git commit -m "workspace-agent: daemon mode + new tools"`
+- **Status:** OPEN — still dirty as of 2026-04-29 cycle #2
+
 ### C-003 — `mywritings.zip` in projectspace root
 - **File:** `projectspace/mywritings.zip`
-- **Issue:** A binary zip file sitting in the projectspace root — wrong location, not a project folder
-- **Risk:** Clutter; if projectspace were ever committed, binary would pollute git history
-- **Fix:** Move to `mountspace/` or extract to `projectspace/mywrites/` if it belongs there
+- **Issue:** Binary zip in projectspace root — wrong location
+- **Fix:** Move to `mountspace/` or extract to `projectspace/mywrites/`
 - **Status:** OPEN
 
 ### C-004 — `myapigw` has no `dockerspace/` structure
 - **File:** `projectspace/myapigw/` — only README.md present
 - **Issue:** Violates project convention (every project needs dockerspace/ with host_scripts/ and container_scripts/)
-- **Risk:** Incomplete project; whoever picks it up has no starting point
-- **Fix:** Create `myapigw/dockerspace/host_scripts/` with stub scripts (build.sh, start.sh, stop.sh, health.sh, login_docker.sh) when ready to develop
 - **Status:** OPEN
 
 ### C-005 — `pc-maker` has no `dockerspace/`
 - **File:** `projectspace/pc-maker/`
-- **Issue:** No dockerspace/ folder — convention says every project should have one
-- **Risk:** Low — pc-maker is a native OS scripts collection, Docker may not apply
-- **Fix:** Either add a minimal dockerspace/ stub or formally document this as a Docker-exempt project
+- **Risk:** Low — pc-maker is a native OS scripts collection
 - **Status:** OPEN
 
 ### C-006 — `workspace-agent` scripts not in `dockerspace/host_scripts/`
 - **File:** `workspace-agent/`
-- **Issue:** Has build.sh, start.sh, stop.sh, health.sh directly in root — not in dockerspace/host_scripts/ as per convention
-- **Risk:** Convention drift — the guardian of conventions doesn't follow them
-- **Fix:** Reorganize into workspace-agent/dockerspace/host_scripts/ — or formally document this as an exception
+- **Issue:** Has build.sh, start.sh, stop.sh, health.sh directly in root — not in dockerspace/host_scripts/
 - **Status:** OPEN
 
 ### C-010 — `claude-agent/host/` contains duplicate scripts outside `dockerspace/`
 - **File:** `projectspace/ai-agents/claude-agent/host/`
-- **Issue:** host/ folder has build.sh, health.sh, start.sh, stop.sh — same names as those in dockerspace/host_scripts/. Unclear which is canonical.
-- **Risk:** Confusion about which scripts to use; maintenance of two sets
-- **Fix:** Verify if host/ is a legacy folder. If dockerspace/host_scripts/ is the canonical location, delete host/ or document its purpose.
-- **Status:** NEW — identified in Session 2
+- **Issue:** Duplicate build.sh, health.sh, start.sh, stop.sh outside dockerspace/host_scripts/
+- **Status:** OPEN
 
 ### C-011 — `linux-lite-7.8-64bit.iso` binary in pc-maker
 - **File:** `projectspace/pc-maker/ossetup/debian2debian/linux-lite-7.8-64bit.iso`
-- **Issue:** A large binary ISO file stored in projectspace. projectspace is gitignored so it won't be committed, but it's poor hygiene to keep ISOs alongside scripts.
-- **Risk:** Disk space; accidental re-introduction if gitignore changes
-- **Fix:** Move to `mountspace/` which is explicitly for local-only files
-- **Status:** NEW — identified in Session 2
+- **Issue:** Large binary ISO stored in projectspace
+- **Fix:** Move to `mountspace/`
+- **Status:** OPEN
+
+### C-015 — `ums-app` and `mypostgresql_db-container` are exited (not running)
+- **Containers:** `ums-app` (Exited 143, ~47h ago), `mypostgresql_db-container` (Exited 137, ~2 days ago)
+- **Impact:** claude-agent health.sh reports UNHEALTHY — PostgreSQL down, Agent DB schema inaccessible
+- **Note:** Exit codes 143 (SIGTERM) and 137 (SIGKILL/OOM) suggest clean/forced shutdowns, not crashes
+- **Risk:** UMS API and DB are unavailable. claude-agent cannot run tests.
+- **Fix:** Owner should restart: `cd projectspace/mypostgresql_db/dockerspace/host_scripts && ./start.sh` then `cd projectspace/ums/dockerspace/host_scripts && ./start_docker.sh`
+- **Status:** NEW — identified 2026-04-29 cycle #2. NOT auto-started (service start requires owner decision).
 
 ---
 
@@ -71,25 +92,13 @@ _Last updated: 2026-04-27 (Session 2 — re-scan)_
 
 ### C-007 — Uncommitted changes to `dockerspace/project.conf` and `.vscode/settings.json`
 - **File:** `dockerspace/project.conf`, `.vscode/settings.json`
-- **Details:**
-  - `project.conf`: stray `r` character in comment separator line (cosmetic typo — `# ─── Project git clone ───────────────r  ───`)
-  - `.vscode/settings.json`: added `latex-workshop.latex.outDir: "%DIR%/output"` (intentional — LaTeX output dir config)
-- **Risk:** Changes may be lost or cause confusion if not committed
-- **Fix:**
-  - Fix the typo in project.conf separator, then commit both files together
-- **Status:** OPEN — still dirty (confirmed Session 2)
-
-### C-008 — `context.md` references API-Gateway (APISIX) as active
-- **File:** `context.md`
-- **Issue:** Says "API-Gateway (APISIX)" with container `apigw-container` — but only a README stub exists in myapigw/. Also references wrong container name (now `ums-app`, not `ums-container`)
-- **Fix:** Update context.md (folded into C-001 fix)
-- **Status:** OPEN (absorbed into C-001)
+- **Details:** Stray `r` typo in project.conf comment separator (line 17); LaTeX outDir setting in .vscode
+- **Verified 2026-04-29:** `bash -n project.conf` passes — typo is cosmetic only, inside a comment
+- **Status:** OPEN — still dirty, but non-functional
 
 ### C-009 — `mypostgresql_db/dockerspace/project.conf` EXPOSE_PORTS=8085:8085
 - **File:** `projectspace/mypostgresql_db/dockerspace/project.conf`
-- **Issue:** PostgreSQL standard port is 5432, not 8085. Port 8085 may be for a management/UI service.
-- **Risk:** Confusion — claude-agent connects to port 5432 (from agent.conf.example). Inconsistent.
-- **Fix:** Verify what 8085 is for. If it's a separate service, document it. Ensure 5432 is also exposed for DB connections.
+- **Issue:** PostgreSQL standard port is 5432, not 8085
 - **Status:** OPEN
 
 ---

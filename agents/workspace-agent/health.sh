@@ -55,10 +55,16 @@ else
     warn "Workspace is not a git repo — git tools will be limited"
 fi
 
+if pgrep -f "workspace/agent.py --daemon" &>/dev/null; then
+    pass "Agent daemon is running (PID $(pgrep -f "workspace/agent.py --daemon" | head -1))"
+else
+    warn "Agent daemon is not running — click Start in the dashboard or run ./start_daemon.sh"
+fi
+
 echo ""
 echo "──────────────────────────────────────────"
 if [ "$OVERALL" -eq 0 ]; then
-    echo -e "Status: ${GREEN}HEALTHY${RESET} — run ./start.sh to begin"
+    echo -e "Status: ${GREEN}HEALTHY${RESET}"
 else
     echo -e "Status: ${RED}UNHEALTHY${RESET} — fix the issues above"
 fi

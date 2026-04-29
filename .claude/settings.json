@@ -35,7 +35,13 @@
       "Bash(bash start_web.sh)",
       "Bash(lsof -ti:8888)",
       "Bash(xargs kill *)",
-      "Bash(chmod +x /home/nishan/myworkspace/agents/dashboard-agent/stop.sh /home/nishan/myworkspace/agents/dashboard-agent/health.sh)"
+      "Bash(chmod +x /home/nishan/myworkspace/agents/agent-orchrastrator/stop.sh /home/nishan/myworkspace/agents/agent-orchrastrator/health.sh)",
+      "Bash(bash stop.sh)",
+      "Bash(/home/nishan/myworkspace/agents/agent-orchestrator/.venv/bin/python -c \"import websockets; print\\(websockets.__version__\\)\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(pkill -f \"/home/nishan/myworkspace/agents/docker-manager-agent/.venv\" --signal 0)",
+      "Bash(grep -E \"\\(\\\\.venv/|/__pycache__/|\\\\.pyc$\\)\")",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

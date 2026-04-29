@@ -1,5 +1,5 @@
 #!/bin/bash
-# build.sh — Set up dashboard-agent venv and install dependencies.
+# build.sh — Set up agent-orchestrator venv and install dependencies.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,19 +13,17 @@ warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 fail()    { echo -e "${RED}[FAIL]${RESET}  $*" >&2; exit 1; }
 
 echo -e "\n${BOLD}╔══════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}║   Dashboard Agent — Build                ║${RESET}"
+echo -e "${BOLD}║   Agent Orchestrator — Build             ║${RESET}"
 echo -e "${BOLD}╚══════════════════════════════════════════╝${RESET}\n"
 
 command -v python3 &>/dev/null || fail "python3 not found."
 info "Python $(python3 --version 2>&1 | awk '{print $2}') found"
 
-if [ ! -d ".venv" ]; then
-    info "Creating virtual environment..."
-    python3 -m venv .venv
-    success "Virtual environment created"
-else
-    info "Virtual environment exists — skipping"
-fi
+info "Removing old virtual environment..."
+rm -rf .venv
+info "Creating virtual environment..."
+python3 -m venv .venv
+success "Virtual environment created"
 
 info "Installing dependencies..."
 .venv/bin/pip install --upgrade pip -q

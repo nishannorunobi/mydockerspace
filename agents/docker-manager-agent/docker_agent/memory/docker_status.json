@@ -1,0 +1,27 @@
+{
+  "last_updated": "2026-04-29T19:32:30",
+  "total_containers": 2,
+  "running": 0,
+  "stopped": 2,
+  "containers": [
+    {
+      "id": "a00020c04220",
+      "name": "ums-app",
+      "status": "Exited (143) 2 days ago",
+      "image": "host_scripts-ums",
+      "running_for": "2 days ago",
+      "cpu": "\u2014",
+      "memory": "\u2014"
+    },
+    {
+      "id": "f9bb519172be",
+      "name": "mypostgresql_db-container",
+      "status": "Exited (137) 2 days ago",
+      "image": "mypostgresql_db-image:1.0",
+      "running_for": "2 days ago",
+      "cpu": "\u2014",
+      "memory": "\u2014"
+    }
+  ],
+  "recent_events": []
+}

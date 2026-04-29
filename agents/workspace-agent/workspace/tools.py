@@ -115,6 +115,55 @@ TOOL_DEFINITIONS = [
             },
             "required": ["meta"]
         }
+    },
+    {
+        "name": "run_command",
+        "description": (
+            "Run a Linux shell command in the workspace and return stdout, stderr, and exit code. "
+            "Use to run health checks, build scripts, or diagnose failures. "
+            "Re-run after a fix to confirm it worked."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string",  "description": "Shell command to run (e.g. './health.sh', 'docker ps', 'python -m py_compile app.py')"},
+                "cwd":     {"type": "string",  "description": "Working directory relative to workspace root (default: workspace root)"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds (default 30, max 120)"}
+            },
+            "required": ["command"]
+        }
+    },
+    {
+        "name": "write_file",
+        "description": (
+            "Write or overwrite a file inside the workspace. "
+            "Use to fix a broken script, config, or source file after diagnosing the issue with run_command. "
+            "Always read the file first, make minimal changes, then re-run to verify."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path":    {"type": "string", "description": "File path relative to workspace root"},
+                "content": {"type": "string", "description": "Full content to write to the file"}
+            },
+            "required": ["path", "content"]
+        }
+    },
+    {
+        "name": "send_email",
+        "description": (
+            "Send an email notification to the workspace owner. "
+            "Call this after any autonomous fix or when you detect an issue you cannot resolve. "
+            "Always include: what was broken, what you changed (if anything), and whether the fix verified successfully."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "subject": {"type": "string", "description": "Short subject line (no prefix needed)"},
+                "body":    {"type": "string", "description": "Plain-text email body — be specific: file changed, old value, new value, verification result"}
+            },
+            "required": ["subject", "body"]
+        }
     }
 ]
 
@@ -223,6 +272,64 @@ def execute_tool(name: str, inp: dict) -> dict:
         MEMORY_DIR.mkdir(exist_ok=True)
         files = [f.name for f in sorted(MEMORY_DIR.iterdir()) if f.is_file()]
         return {"files": files}
+
+    if name == "run_command":
+        command = inp["command"]
+        BLOCKED = ["rm -rf /", "mkfs", ":(){:|:&};:", "> /dev/sd"]
+        if any(b in command for b in BLOCKED):
+            return {"error": f"Command blocked for safety: {command}"}
+        cwd = WORKSPACE_ROOT / inp["cwd"] if inp.get("cwd") else WORKSPACE_ROOT
+        if not str(cwd.resolve()).startswith(str(WORKSPACE_ROOT)):
+            return {"error": "cwd must be inside workspace"}
+        timeout = min(inp.get("timeout", 30), 120)
+        try:
+            result = subprocess.run(
+                command, shell=True, cwd=str(cwd),
+                capture_output=True, text=True, timeout=timeout
+            )
+            return {
+                "stdout":    result.stdout[:4000],
+                "stderr":    result.stderr[:2000],
+                "exit_code": result.returncode
+            }
+        except subprocess.TimeoutExpired:
+            return {"error": f"Command timed out after {timeout}s"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    if name == "write_file":
+        path = (WORKSPACE_ROOT / inp["path"]).resolve()
+        if not str(path).startswith(str(WORKSPACE_ROOT)):
+            return {"error": "Access denied — path outside workspace"}
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(inp["content"])
+            return {"saved": str(path)}
+        except Exception as e:
+            return {"error": str(e)}
+
+    if name == "send_email":
+        import smtplib
+        from email.mime.text import MIMEText
+        smtp_host    = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+        smtp_port    = int(os.environ.get("SMTP_PORT", "587"))
+        smtp_user    = os.environ.get("SMTP_USER", "")
+        smtp_pass    = os.environ.get("SMTP_PASS", "")
+        notify_email = os.environ.get("NOTIFY_EMAIL", smtp_user)
+        if not smtp_user or not smtp_pass:
+            return {"error": "SMTP credentials not set — add SMTP_USER and SMTP_PASS to shared.conf"}
+        msg = MIMEText(inp["body"])
+        msg["Subject"] = f"[workspace-agent] {inp['subject']}"
+        msg["From"]    = smtp_user
+        msg["To"]      = notify_email
+        try:
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+            return {"sent": True, "to": notify_email}
+        except Exception as e:
+            return {"error": f"Email failed: {e}"}
 
     if name == "update_meta":
         MEMORY_DIR.mkdir(exist_ok=True)
