@@ -5,6 +5,8 @@ import re
 import subprocess
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -133,3 +135,86 @@ async def read_memory(agent_id: str, filename: str):
     if not path.exists():
         return {"error": "not found"}
     return {"filename": filename, "content": path.read_text()}
+
+
+# ── Container proxy (for HTTP agents that manage containers) ──────────────────
+
+def _proxy_get(url: str) -> dict:
+    try:
+        with urllib.request.urlopen(url, timeout=10) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def _proxy_post(url: str) -> dict:
+    req = urllib.request.Request(url, data=b"", method="POST",
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        try:
+            return json.loads(body)
+        except Exception:
+            return {"error": f"HTTP {e.code}: {body[:300]}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.get("/{agent_id}/sub-agents")
+async def list_sub_agents(agent_id: str):
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    loop = asyncio.get_event_loop()
+    all_info = await loop.run_in_executor(None, registry.get_all_info)
+    sub_ids  = set(spec.sub_agents)
+    return {"sub_agents": [a for a in all_info if a["id"] in sub_ids]}
+
+
+@router.get("/{agent_id}/containers")
+async def list_agent_containers(agent_id: str):
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec or spec.connector != "http" or not spec.api_url:
+        return JSONResponse({"error": "agent has no HTTP API"}, status_code=400)
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(None, _proxy_get, f"{spec.api_url.rstrip('/')}/api/containers")
+    return data
+
+
+@router.post("/{agent_id}/containers/{name}/start")
+async def container_start(agent_id: str, name: str):
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec or spec.connector != "http" or not spec.api_url:
+        return JSONResponse({"error": "agent has no HTTP API"}, status_code=400)
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(
+        None, _proxy_post, f"{spec.api_url.rstrip('/')}/api/containers/{name}/start"
+    )
+    return data
+
+
+@router.post("/{agent_id}/containers/{name}/stop")
+async def container_stop(agent_id: str, name: str):
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec or spec.connector != "http" or not spec.api_url:
+        return JSONResponse({"error": "agent has no HTTP API"}, status_code=400)
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(
+        None, _proxy_post, f"{spec.api_url.rstrip('/')}/api/containers/{name}/stop"
+    )
+    return data
+
+
+@router.post("/{agent_id}/containers/{name}/restart")
+async def container_restart(agent_id: str, name: str):
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec or spec.connector != "http" or not spec.api_url:
+        return JSONResponse({"error": "agent has no HTTP API"}, status_code=400)
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(
+        None, _proxy_post, f"{spec.api_url.rstrip('/')}/api/containers/{name}/restart"
+    )
+    return data

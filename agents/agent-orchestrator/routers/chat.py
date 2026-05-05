@@ -357,6 +357,16 @@ async def agent_chat(ws: WebSocket, agent_id: str):
 
     # HTTP agents: proxy the full session to the agent's own /ws/chat endpoint
     if spec.connector == "http" and spec.api_url:
+        import asyncio as _aio
+        connector = registry.make_connector(spec)
+        available = await _aio.get_event_loop().run_in_executor(None, connector.is_available)
+        if not available:
+            await ws.send_json({
+                "type": "error",
+                "content": f"{spec.name} is not running. Click Start to launch it, then re-open this panel.",
+            })
+            await ws.send_json({"type": "done"})
+            return
         await _ws_proxy_session(ws, spec)
         return
 

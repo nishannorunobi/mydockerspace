@@ -46,13 +46,26 @@
 
     <!-- View toggle toolbar -->
     <div class="view-toggle">
-      <button class="vbtn active" data-view="grid"   onclick="window._dash.showGrid()">Grid View</button>
-      <button class="vbtn"        data-view="detail" onclick="">Detail</button>
+      <button class="vbtn active" data-view="grid"     onclick="window._dash.showGrid()">Grid View</button>
+      <button class="vbtn"        data-view="services" onclick="window._dash.showServices()">⛓ Services</button>
+      <button class="vbtn"        data-view="detail"   onclick="">Detail</button>
     </div>
 
     <!-- ── Grid view ── -->
     <div class="grid-view" id="grid-view">
       <!-- agent cards injected by _renderGrid() -->
+    </div>
+
+    <!-- ── Services view ── -->
+    <div class="services-view hidden" id="services-view">
+      <div class="svc-toolbar">
+        <span class="svc-title">Running Web Services</span>
+        <span class="svc-note" id="svc-note"></span>
+        <button class="svc-refresh-btn" onclick="window._dash.refreshServices()">↺ Refresh</button>
+      </div>
+      <div class="svc-list" id="svc-list">
+        <div class="svc-empty">Loading…</div>
+      </div>
     </div>
 
     <!-- ── Detail view (hidden until agent selected) ── -->
@@ -74,9 +87,12 @@
 
       <!-- Tabs -->
       <div class="tabs">
-        <div class="tab active" data-tab="chat" onclick="window._dash.switchTab('chat')">Chat</div>
-        <div class="tab"        data-tab="logs" onclick="window._dash.switchTab('logs')">Logs</div>
-        <div class="tab"        data-tab="mem"  onclick="window._dash.switchTab('mem')">Memory</div>
+        <div class="tab active" data-tab="chat"       onclick="window._dash.switchTab('chat')">Chat</div>
+        <div class="tab"        data-tab="containers" onclick="window._dash.switchTab('containers')" id="tab-containers" style="display:none">Containers</div>
+        <div class="tab"        data-tab="logs"       onclick="window._dash.switchTab('logs')">Logs</div>
+        <div class="tab"        data-tab="mem"        onclick="window._dash.switchTab('mem')">Memory</div>
+        <div class="tab"        data-tab="agents"     onclick="window._dash.switchTab('agents')"   id="tab-agents"  style="display:none">Agents</div>
+        <div class="tab"        data-tab="apidocs"    onclick="window._dash.switchTab('apidocs')"  id="tab-apidocs" style="display:none">API Docs</div>
       </div>
 
       <!-- Panes -->
@@ -91,6 +107,17 @@
           </div>
         </div>
 
+        <!-- Containers pane -->
+        <div class="pane" id="pane-containers">
+          <div class="containers-toolbar">
+            <span class="containers-summary" id="containers-summary"></span>
+            <button class="containers-refresh-btn" onclick="window._dash.refreshContainers()">↺ Refresh</button>
+          </div>
+          <div class="containers-grid" id="containers-grid">
+            <div class="containers-empty">Select an agent with container management to view containers.</div>
+          </div>
+        </div>
+
         <!-- Logs pane -->
         <div class="pane" id="pane-logs">
           <div class="log-stream" id="log-stream"></div>
@@ -102,6 +129,16 @@
             <div class="mem-list" id="mem-list"></div>
             <div class="mem-body" id="mem-body">Select a memory file to view it.</div>
           </div>
+        </div>
+
+        <!-- Agents pane -->
+        <div class="pane" id="pane-agents">
+          <div class="sub-agents-grid" id="sub-agents-grid"></div>
+        </div>
+
+        <!-- API Docs pane -->
+        <div class="pane" id="pane-apidocs">
+          <iframe id="apidocs-frame" src="" style="width:100%;height:100%;border:none;border-radius:0"></iframe>
         </div>
 
       </div>
@@ -253,6 +290,26 @@
 <script src="/static/js/events.js"></script>
 <script src="/static/js/dashboard.js"></script>
 <script src="/static/js/tasks.js"></script>
+<script src="/static/js/urls.js"></script>
+
+<!-- ── All URLs modal ── -->
+<div class="modal-overlay hidden" id="urls-modal" onclick="if(event.target===this)window._urls.close()">
+  <div class="modal" style="width:620px;max-width:95vw">
+    <div class="modal-hdr">
+      <span style="font-weight:600">⛓ All URLs</span>
+      <div class="modal-hdr-sep"></div>
+      <button class="modal-close" onclick="window._urls.close()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px">
+      <div id="urls-list"><div style="color:var(--text3);font-size:13px">Loading…</div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="window._urls.refresh()">↺ Refresh</button>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:var(--text3)" id="urls-note">Declare services in agents.conf</span>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

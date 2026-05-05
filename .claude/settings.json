@@ -44,7 +44,29 @@
       "Bash(git commit -m ' *)",
       "Bash(git count-objects *)",
       "Bash(git gc *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(timeout 3 bash start.sh)",
+      "Bash(curl -sf http://localhost:8888/health)",
+      "Bash(pkill -f \"docker-manager-agent/.venv\")",
+      "Bash(bash /home/nishan/myworkspace/agents/agent-orchestrator/stop.sh)",
+      "Bash(kill 27437)",
+      "Bash(curl -sf http://localhost:8888/api/agents)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(a['id'], a['connector']\\) for a in d['agents']]\")",
+      "Bash(bash start.sh)",
+      "Bash(curl -sf http://localhost:8889/health)",
+      "Bash(curl -sf \"http://localhost:8888/api/agents/docker/containers\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'containers: {d.get\\(\\\\\"count\\\\\",\\\\\"err\\\\\"\\)}, running: {d.get\\(\\\\\"running\\\\\",\\\\\"err\\\\\"\\)}'\\)\")",
+      "Bash(curl -sf http://localhost:8080/actuator/health)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k\\) for k in d]\")",
+      "Bash(docker exec *)",
+      "Bash(docker restart *)",
+      "Bash(curl -sf http://localhost:8889/api/db-agent/health)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('ums-network',{}\\).get\\('IPAddress','NOT FOUND'\\)\\)\")",
+      "Bash(curl -s http://localhost:8888/api/agents/docker/containers)",
+      "Bash(curl -s -X POST http://localhost:8889/api/db-agent/api/tasks -H 'Content-Type: application/json' -d '{\"task\": \"check if PostgreSQL is running and report the version\"}')",
+      "Bash(curl -sv -X POST http://localhost:8889/api/db-agent/api/tasks -H 'Content-Type: application/json' -d '{\"task\": \"check if PostgreSQL is running\"}')",
+      "Bash(curl -s http://localhost:8888/api/config/anthropic-key)",
+      "Bash(curl -s -X POST http://localhost:8888/api/config/anthropic-key -H 'Content-Type: application/json' -d '{\"key\": \"sk-ant-TESTKEY123456789012345\"}')"
     ]
   }
 }

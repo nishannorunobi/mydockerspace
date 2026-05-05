@@ -1,27 +1,98 @@
 {
-  "last_updated": "2026-04-29T19:32:30",
+  "last_updated": "2026-05-05T15:55:17",
   "total_containers": 2,
-  "running": 0,
-  "stopped": 2,
+  "running": 2,
+  "stopped": 0,
   "containers": [
     {
       "id": "a00020c04220",
       "name": "ums-app",
-      "status": "Exited (143) 2 days ago",
+      "status": "Up 2 hours",
       "image": "host_scripts-ums",
-      "running_for": "2 days ago",
-      "cpu": "\u2014",
-      "memory": "\u2014"
+      "running_for": "8 days ago",
+      "cpu": "0.25%",
+      "memory": "257.4MiB / 15.35GiB"
     },
     {
       "id": "f9bb519172be",
       "name": "mypostgresql_db-container",
-      "status": "Exited (137) 2 days ago",
+      "status": "Up 2 hours",
       "image": "mypostgresql_db-image:1.0",
-      "running_for": "2 days ago",
-      "cpu": "\u2014",
-      "memory": "\u2014"
+      "running_for": "8 days ago",
+      "cpu": "0.16%",
+      "memory": "213.7MiB / 15.35GiB"
     }
   ],
-  "recent_events": []
+  "recent_events": [
+    {
+      "timestamp": "2026-05-05T13:57:34",
+      "container_id": "a00020c04220",
+      "container_name": "ums-app",
+      "event_type": "restarted",
+      "details": "a00020c04220"
+    },
+    {
+      "timestamp": "2026-05-05T13:57:34",
+      "container_id": "a00020c04220",
+      "container_name": "ums-app",
+      "event_type": "stopped",
+      "details": "was: 'Up About a minute'"
+    },
+    {
+      "timestamp": "2026-05-05T13:55:49",
+      "container_id": "mypostgresql_db-container",
+      "container_name": "mypostgresql_db-container",
+      "event_type": "manually_started",
+      "details": "via API"
+    },
+    {
+      "timestamp": "2026-05-05T13:55:18",
+      "container_id": "a00020c04220",
+      "container_name": "ums-app",
+      "event_type": "restarted",
+      "details": "a00020c04220"
+    },
+    {
+      "timestamp": "2026-05-05T13:55:18",
+      "container_id": "a00020c04220",
+      "container_name": "ums-app",
+      "event_type": "stopped",
+      "details": "was: 'Up About a minute'"
+    },
+    {
+      "timestamp": "2026-05-05T13:53:07",
+      "container_id": "ums-app",
+      "container_name": "ums-app",
+      "event_type": "manually_started",
+      "details": "via API"
+    },
+    {
+      "timestamp": "2026-05-05T13:52:35",
+      "container_id": "mypostgresql_db-container",
+      "container_name": "mypostgresql_db-container",
+      "event_type": "manually_stopped",
+      "details": "via API"
+    },
+    {
+      "timestamp": "2026-05-05T13:52:16",
+      "container_id": "f9bb519172be",
+      "container_name": "mypostgresql_db-container",
+      "event_type": "restarted",
+      "details": "f9bb519172be"
+    },
+    {
+      "timestamp": "2026-05-05T13:52:15",
+      "container_id": "f9bb519172be",
+      "container_name": "mypostgresql_db-container",
+      "event_type": "stopped",
+      "details": "was: 'Up 9 seconds'"
+    },
+    {
+      "timestamp": "2026-05-05T13:52:14",
+      "container_id": "mypostgresql_db-container",
+      "container_name": "mypostgresql_db-container",
+      "event_type": "manually_stopped",
+      "details": "via API"
+    }
+  ]
 }

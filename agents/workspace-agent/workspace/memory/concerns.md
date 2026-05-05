@@ -1,5 +1,5 @@
 # Open Concerns & Flagged Anomalies
-_Last updated: 2026-04-29 (Autonomous maintenance cycle #2)_
+_Last updated: 2026-05-05 (Autonomous maintenance cycle #3)_
 
 ---
 
@@ -23,28 +23,25 @@ _Last updated: 2026-04-29 (Autonomous maintenance cycle #2)_
 
 ## 🟡 MEDIUM PRIORITY
 
-### C-012 — `docker-manager-agent` not built — server not on port 8889
-- **File:** `agents/docker-manager-agent/`
-- **Issue:** health.sh shows WARN: "Server not responding on port 8889 — run ./start.sh". Agent has .venv and shared.conf but is NOT started.
-- **Update 2026-04-29 cycle #2:** health.sh now returns HEALTHY (exit 0) — .venv and keys exist. Agent simply needs `./start.sh` to be called.
-- **Risk:** Agent is idle, not monitoring Docker. Non-critical but unused capacity.
-- **Fix:** Run `cd agents/docker-manager-agent && ./start.sh`
-- **Status:** UPDATED — was C-012 "never built"; now built but not started. Owner decision to start.
-
 ### C-013 — `dashboard-agent/` deleted from git index but not committed
 - **File:** `agents/dashboard-agent/` (24 files staged as deleted in git status)
 - **Context:** Commit `42656d6` moved dashboard-agent to `agents/agent-orchestrator/`. Deletions are correct but uncommitted.
 - **Risk:** Low — agent-orchestrator is HEALTHY on port 8888. But git index is dirty.
 - **Fix:** `git add -A && git commit -m "remove stale dashboard-agent path"`
-- **Status:** OPEN — still dirty as of 2026-04-29 cycle #2
+- **Status:** OPEN — still dirty as of 2026-05-05 cycle #3
 
-### C-014 — Several uncommitted modifications to workspace-agent
-- **Files:** `agents/workspace-agent/health.sh`, `workspace/agent.py`, `workspace/tools.py`, `workspace/memory/change_log.md`, `workspace/memory/concerns.md`, `workspace/memory/sessions.md`
-- **Untracked:** `agents/workspace-agent/start_daemon.sh`, `workspace/memory/daemon.log`
-- **Context:** Additive improvements — daemon loop, new tool defs, daemon PID check. Not breakage.
-- **Risk:** Changes lost on branch reset; `start_daemon.sh` not tracked by git
-- **Fix:** `git add agents/workspace-agent/ && git commit -m "workspace-agent: daemon mode + new tools"`
-- **Status:** OPEN — still dirty as of 2026-04-29 cycle #2
+### C-014 — Large batch of uncommitted modifications (897 insertions, 16 files)
+- **Files modified since last commit `c9dc3ac`:**
+  - `agents/agent-orchestrator/` — agents.conf, agent_registry.py, routers/agents.py, routers/chat.py, server.py, static/css/style.css, static/index.html, static/js/dashboard.js
+  - `agents/docker-manager-agent/docker_agent/` — monitor.py (start/stop/db-agent autostart), server.py (new endpoints + db-agent proxy), tools.py (extended)
+  - `agents/docker-manager-agent/docker_agent/memory/` — docker_status.json, events.db (runtime data)
+  - `.claude/settings.json`
+- **Untracked:** `agents/agent-orchestrator/routers/config.py` (new API key management router)
+- **All syntax checks pass** — no broken files found
+- **No hardcoded IPs** — all container refs use names
+- **Risk:** Significant feature work uncommitted. Changes lost on branch reset.
+- **Fix:** Owner should commit: `git add agents/agent-orchestrator/ agents/docker-manager-agent/ .claude/settings.json && git commit -m "..."`
+- **Status:** UPDATED from C-014 (was workspace-agent changes) — now covers full agent feature batch
 
 ### C-003 — `mywritings.zip` in projectspace root
 - **File:** `projectspace/mywritings.zip`
@@ -78,13 +75,13 @@ _Last updated: 2026-04-29 (Autonomous maintenance cycle #2)_
 - **Fix:** Move to `mountspace/`
 - **Status:** OPEN
 
-### C-015 — `ums-app` and `mypostgresql_db-container` are exited (not running)
-- **Containers:** `ums-app` (Exited 143, ~47h ago), `mypostgresql_db-container` (Exited 137, ~2 days ago)
-- **Impact:** claude-agent health.sh reports UNHEALTHY — PostgreSQL down, Agent DB schema inaccessible
-- **Note:** Exit codes 143 (SIGTERM) and 137 (SIGKILL/OOM) suggest clean/forced shutdowns, not crashes
-- **Risk:** UMS API and DB are unavailable. claude-agent cannot run tests.
-- **Fix:** Owner should restart: `cd projectspace/mypostgresql_db/dockerspace/host_scripts && ./start.sh` then `cd projectspace/ums/dockerspace/host_scripts && ./start_docker.sh`
-- **Status:** NEW — identified 2026-04-29 cycle #2. NOT auto-started (service start requires owner decision).
+### C-016 — UMS `/actuator/health` returns HTTP 500 (NEW)
+- **Container:** `ums-app` (Spring Boot 3 / Java 21)
+- **Issue:** `GET /actuator/health` → 500. Log shows: `NoResourceFoundException: No static resource actuator/health.` — Spring Boot Actuator is not enabled or not exposed on the management port.
+- **Impact:** claude-agent health.sh marks UMS as OK (uses HTTP 500 as "reachable") but Actuator metrics/health are inaccessible. Monitoring blind spot.
+- **API is functional:** `GET /api/v1/users` returns correct data. Application itself is working.
+- **Fix:** Add to `application.properties` or `application.yml`: `management.endpoints.web.exposure.include=health,info` — rebuild and redeploy ums-app.
+- **Status:** NEW — identified 2026-05-05 cycle #3. Not auto-fixed (requires rebuild).
 
 ---
 
@@ -101,7 +98,15 @@ _Last updated: 2026-04-29 (Autonomous maintenance cycle #2)_
 - **Issue:** PostgreSQL standard port is 5432, not 8085
 - **Status:** OPEN
 
+### C-012 — `docker-manager-agent` not started from agent-orchestrator start button
+- **Previous status:** Agent was not started. Updated 2026-04-29: health.sh was HEALTHY, agent needed ./start.sh
+- **Current status (2026-05-05):** Agent IS running on port 8889 ✅ — concern downgraded to monitoring
+- **Status:** MONITORING — running; flag if it goes down again
+
 ---
 
 ## ✅ RESOLVED
-_(none yet)_
+
+### C-015 — `ums-app` and `mypostgresql_db-container` were exited ✅ RESOLVED 2026-05-05
+- Both containers are now running (Up 55+ min each as of cycle #3)
+- Exit codes 143/137 from previous cycle were clean/forced shutdowns, not crashes

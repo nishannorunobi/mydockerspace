@@ -2,6 +2,7 @@
 Docker Monitor — polls Docker every INTERVAL seconds.
 - Detects containers that transition from running → stopped
 - Auto-restarts them and logs the event + result to the database
+- Auto-starts the db-agent inside mypostgresql_db-container when it comes up
 - Writes docker_status.json for the agent-orchestrator to consume
 """
 import json
@@ -12,6 +13,36 @@ from pathlib import Path
 from typing import Callable, Optional
 
 import database as db
+
+DB_CONTAINER   = "mypostgresql_db-container"
+DB_AGENT_START = "/mypostgresql_db/db-agent/start.sh"
+DB_AGENT_PORT  = 8890
+
+
+def _start_db_agent_in_container():
+    """Launch the db-agent HTTP server inside the DB container (non-blocking)."""
+    try:
+        subprocess.Popen(
+            ["docker", "exec", "-d", DB_CONTAINER,
+             "bash", "-c",
+             f"cd /mypostgresql_db/db-agent && nohup bash start.sh > memory/server.log 2>&1 &"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
+def _db_agent_running() -> bool:
+    """Return True if the db-agent is already listening inside the DB container."""
+    try:
+        r = subprocess.run(
+            ["docker", "exec", DB_CONTAINER,
+             "curl", "-sf", f"http://localhost:{DB_AGENT_PORT}/health"],
+            capture_output=True, timeout=5,
+        )
+        return r.returncode == 0
+    except Exception:
+        return False
 
 MEMORY_DIR  = Path(__file__).resolve().parent / "memory"
 STATUS_FILE = MEMORY_DIR / "docker_status.json"
@@ -80,6 +111,16 @@ def get_stats() -> list[dict]:
 def restart_container(name_or_id: str) -> tuple[bool, str]:
     rc, out = _run(["docker", "restart", name_or_id], timeout=45)
     return rc == 0, out or ("restarted" if rc == 0 else "failed")
+
+
+def start_container(name_or_id: str) -> tuple[bool, str]:
+    rc, out = _run(["docker", "start", name_or_id], timeout=30)
+    return rc == 0, out or ("started" if rc == 0 else "failed")
+
+
+def stop_container(name_or_id: str) -> tuple[bool, str]:
+    rc, out = _run(["docker", "stop", name_or_id], timeout=30)
+    return rc == 0, out or ("stopped" if rc == 0 else "failed")
 
 
 def get_logs(name_or_id: str, lines: int = 100) -> str:
@@ -152,6 +193,11 @@ class DockerMonitor(threading.Thread):
                 db.log_event(c["id"], name, event, msg)
                 if self._on_event:
                     self._on_event(name, event, msg)
+
+            elif "Up" not in prev and "Up" in now and name == DB_CONTAINER:
+                # DB container just came up → auto-start db-agent inside it
+                db.log_event(c["id"], name, "db_agent_autostart", "container came up")
+                threading.Thread(target=_start_db_agent_in_container, daemon=True).start()
 
         self._known = {name: c["status"] for name, c in current.items()}
 

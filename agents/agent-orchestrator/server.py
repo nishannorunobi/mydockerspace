@@ -57,12 +57,14 @@ app.add_middleware(NoCacheStatic)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-from routers import agents, alerts, events, chat, tasks
+from routers import agents, alerts, events, chat, tasks, config, services
 
-app.include_router(agents.router, prefix="/api")
-app.include_router(alerts.router, prefix="/api")
-app.include_router(events.router, prefix="/api")
-app.include_router(tasks.router,  prefix="/api")
+app.include_router(agents.router,  prefix="/api")
+app.include_router(alerts.router,  prefix="/api")
+app.include_router(events.router,  prefix="/api")
+app.include_router(tasks.router,   prefix="/api")
+app.include_router(config.router,   prefix="/api")
+app.include_router(services.router, prefix="/api")
 app.include_router(chat.router)
 
 

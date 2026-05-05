@@ -1,5 +1,5 @@
 """
-Docker Orchestrator Agent — FastAPI server.
+Docker Manager Agent — FastAPI server.
 
 API endpoints:
   GET  /health                          health check
@@ -8,9 +8,16 @@ API endpoints:
   GET  /api/containers/{name}           single container detail + stats
   GET  /api/containers/{name}/logs      recent log output
   GET  /api/containers/{name}/history   snapshot history from DB
+  POST /api/containers/{name}/start     start a container
+  POST /api/containers/{name}/stop      stop a container
   POST /api/containers/{name}/restart   restart a container
   GET  /api/events                      recent events (all or filtered)
   POST /api/tasks                       natural language task → AI agent response
+  GET  /api/db-agent/health             proxy: db-agent liveness + postgres state
+  POST /api/db-agent/db/start           proxy: start PostgreSQL inside DB container
+  POST /api/db-agent/db/stop            proxy: stop PostgreSQL inside DB container
+  POST /api/db-agent/tasks              proxy: AI task for db-agent
+  WS   /api/db-agent/ws/chat            proxy: streaming chat with db-agent
 """
 import asyncio
 import json
@@ -26,7 +33,7 @@ import anthropic as _anthropic
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
 # ── Path + config ──────────────────────────────────────────────────────────────
@@ -38,7 +45,8 @@ load_dotenv(BASE_DIR.parent / "server.conf")
 
 import database as db
 import agent as ai_agent
-from monitor import DockerMonitor, list_containers, get_stats, get_logs, restart_container, STATUS_FILE
+import port_forward as pf
+from monitor import DockerMonitor, list_containers, get_stats, get_logs, restart_container, start_container, stop_container, STATUS_FILE
 from tools import TOOL_DEFINITIONS, execute_tool
 
 # ── Chat history ───────────────────────────────────────────────────────────────
@@ -71,7 +79,7 @@ def _load_chat_history() -> list:
     return msgs
 
 # ── App ────────────────────────────────────────────────────────────────────────
-app = FastAPI(title="Docker Orchestrator Agent", version="1.0")
+app = FastAPI(title="Docker Manager Agent", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -105,6 +113,7 @@ def _send_notification(container_name: str, event: str, detail: str):
 
 @app.on_event("startup")
 async def startup():
+    pf.restore_from_disk()  # re-launch saved socat tunnels
     db.init()
     monitor = DockerMonitor(on_event=_send_notification)
     monitor.start()
@@ -116,6 +125,13 @@ async def shutdown():
     monitor = getattr(app.state, "monitor", None)
     if monitor:
         monitor.stop()
+
+
+# ── Root ───────────────────────────────────────────────────────────────────────
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/docs")
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
@@ -190,6 +206,28 @@ def container_history(name: str, limit: int = 50):
     return {"name": name, "count": len(snapshots), "history": snapshots}
 
 
+@app.post("/api/containers/{name}/start")
+def start_one(name: str):
+    """Start a stopped container."""
+    ok, msg = start_container(name)
+    event   = "manually_started" if ok else "manual_start_failed"
+    db.log_event(name, name, event, "via API")
+    if not ok:
+        raise HTTPException(status_code=500, detail=msg)
+    return {"success": True, "container": name, "message": msg}
+
+
+@app.post("/api/containers/{name}/stop")
+def stop_one(name: str):
+    """Stop a running container."""
+    ok, msg = stop_container(name)
+    event   = "manually_stopped" if ok else "manual_stop_failed"
+    db.log_event(name, name, event, "via API")
+    if not ok:
+        raise HTTPException(status_code=500, detail=msg)
+    return {"success": True, "container": name, "message": msg}
+
+
 @app.post("/api/containers/{name}/restart")
 def restart_one(name: str):
     """Manually restart a container."""
@@ -213,6 +251,62 @@ def get_events(limit: int = 50, container: str = None):
         "count":  limit,
         "events": db.get_events(limit=limit, container_name=container),
     }
+
+
+# ── Port forwarding ────────────────────────────────────────────────────────────
+
+class PortForwardBody(BaseModel):
+    container:      str
+    container_port: int
+    host_port:      int
+    label:          str = ""
+
+
+def _container_ip(container_name: str) -> str | None:
+    try:
+        r = _sp.run(
+            ["docker", "inspect", container_name,
+             "--format", "{{json .NetworkSettings.Networks}}"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0:
+            return None
+        nets = json.loads(r.stdout.strip())
+        for net in nets.values():
+            ip = net.get("IPAddress", "")
+            if ip:
+                return ip
+    except Exception:
+        pass
+    return None
+
+
+@app.get("/api/port-forwards")
+def list_port_forwards():
+    return {"forwards": pf.list_forwards()}
+
+
+@app.post("/api/port-forward")
+def add_port_forward(body: PortForwardBody):
+    ip = _container_ip(body.container)
+    if not ip:
+        return JSONResponse(
+            {"ok": False, "error": f"Cannot resolve IP for container '{body.container}'"},
+            status_code=400,
+        )
+    result = pf.start(
+        host_port=body.host_port,
+        container_ip=ip,
+        container_port=body.container_port,
+        container=body.container,
+        label=body.label,
+    )
+    return result
+
+
+@app.delete("/api/port-forward/{host_port}")
+def remove_port_forward(host_port: int):
+    return pf.stop(host_port)
 
 
 # ── AI agent task endpoint (used by agent-orchestrator connector) ──────────────
@@ -325,3 +419,133 @@ async def ws_chat(ws: WebSocket):
             history = await _chat_turn(ws, history, client)
     except WebSocketDisconnect:
         pass
+
+
+# ── DB Agent proxy routes ──────────────────────────────────────────────────────
+# The docker-manager-agent proxies HTTP and WS calls to the db-agent
+# running inside mypostgresql_db-container on ums-network.
+
+import urllib.request as _urllib_req
+import urllib.error   as _urllib_err
+import subprocess     as _sp
+
+_DB_AGENT_CONTAINER = "mypostgresql_db-container"
+_DB_AGENT_PORT      = 8890
+_DB_AGENT_NETWORK   = "ums-network"
+
+
+def _db_agent_base_url() -> str | None:
+    try:
+        r = _sp.run(
+            ["docker", "inspect", _DB_AGENT_CONTAINER, "--format", "{{json .NetworkSettings.Networks}}"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0:
+            return None
+        networks = json.loads(r.stdout.strip())
+        ip = (networks.get(_DB_AGENT_NETWORK) or {}).get("IPAddress", "")
+        return f"http://{ip}:{_DB_AGENT_PORT}" if ip else None
+    except Exception:
+        return None
+
+
+def _db_proxy_get(path: str) -> dict:
+    base = _db_agent_base_url()
+    if not base:
+        return {"error": f"{_DB_AGENT_CONTAINER} not reachable on {_DB_AGENT_NETWORK}"}
+    try:
+        with _urllib_req.urlopen(f"{base}{path}", timeout=10) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def _db_proxy_post(path: str, payload: dict | None = None) -> dict:
+    base = _db_agent_base_url()
+    if not base:
+        return {"error": f"{_DB_AGENT_CONTAINER} not reachable on {_DB_AGENT_NETWORK}"}
+    data = json.dumps(payload or {}).encode()
+    req  = _urllib_req.Request(f"{base}{path}", data=data,
+                               headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with _urllib_req.urlopen(req, timeout=90) as r:
+            return json.loads(r.read())
+    except _urllib_err.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        try:
+            return json.loads(body)
+        except Exception:
+            return {"error": f"HTTP {e.code}: {body[:300]}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/db-agent/health")
+async def db_agent_health():
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _db_proxy_get, "/health")
+
+
+@app.post("/api/db-agent/db/start")
+async def db_agent_start():
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _db_proxy_post, "/api/db/start", None)
+
+
+@app.post("/api/db-agent/db/stop")
+async def db_agent_stop():
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _db_proxy_post, "/api/db/stop", None)
+
+
+@app.post("/api/db-agent/api/tasks")
+async def db_agent_task(body: TaskRequest):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None, _db_proxy_post, "/api/tasks", {"task": body.task}
+    )
+    return result
+
+
+@app.websocket("/api/db-agent/ws/chat")
+async def db_agent_ws_chat(client_ws: WebSocket):
+    """Proxy WebSocket chat directly to the db-agent inside the container."""
+    await client_ws.accept()
+    import websockets
+
+    base = _db_agent_base_url()
+    if not base:
+        await client_ws.send_json({
+            "type": "error",
+            "content": f"DB agent not reachable — is {_DB_AGENT_CONTAINER} running?",
+        })
+        await client_ws.send_json({"type": "done"})
+        return
+
+    ws_url = base.replace("http://", "ws://") + "/ws/chat"
+    try:
+        async with websockets.connect(ws_url) as agent_ws:
+            async def _to_agent():
+                try:
+                    while True:
+                        data = await client_ws.receive_text()
+                        await agent_ws.send(data)
+                except Exception:
+                    pass
+
+            async def _to_client():
+                try:
+                    async for raw in agent_ws:
+                        text = raw if isinstance(raw, str) else raw.decode()
+                        await client_ws.send_text(text)
+                except Exception:
+                    pass
+
+            t1 = asyncio.create_task(_to_agent())
+            t2 = asyncio.create_task(_to_client())
+            await asyncio.wait([t1, t2], return_when=asyncio.FIRST_COMPLETED)
+            for t in (t1, t2):
+                t.cancel()
+    except Exception as e:
+        await client_ws.send_json({"type": "error", "content": f"Cannot reach db-agent: {e}"})
+        await client_ws.send_json({"type": "done"})

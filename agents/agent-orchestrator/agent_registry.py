@@ -47,6 +47,10 @@ class AgentSpec:
     connector_module: Optional[str] = None   # direct: dotted Python module path (e.g. workspace.agent)
     api_url:          Optional[str] = None   # http:   base URL of the agent's HTTP server
     connector_cmd:    Optional[str] = None   # subprocess: command relative to home
+    # list of {"name": str, "url": str, "health_url": str|None}
+    services:         List[dict]    = field(default_factory=list)
+    sub_agents:       List[str]     = field(default_factory=list)  # agent ids managed by this agent
+    hidden:           bool          = False                        # hide from main dashboard grid
 
 
 @dataclass
@@ -106,8 +110,29 @@ def _load_specs() -> List[AgentSpec]:
             connector_module=c.get("connector_module"),
             api_url=c.get("api_url"),
             connector_cmd=c.get("connector_cmd"),
+            services=_parse_services(c.get("services", "")),
+            sub_agents=[s.strip() for s in c.get("sub_agents", "").split(",") if s.strip()],
+            hidden=c.get("hidden", "false").strip().lower() == "true",
         ))
     return specs
+
+
+def _parse_services(raw: str) -> List[dict]:
+    """Parse 'Name|url[|health_url], Name2|url2' into list of dicts."""
+    services = []
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        parts = [p.strip() for p in entry.split("|")]
+        if len(parts) < 2:
+            continue
+        services.append({
+            "name":       parts[0],
+            "url":        parts[1],
+            "health_url": parts[2] if len(parts) > 2 else None,
+        })
+    return services
 
 
 AGENT_SPECS: List[AgentSpec] = _load_specs()
@@ -211,5 +236,9 @@ def get_all_info() -> List[dict]:
                 "downtime":    state.downtime(),
                 "last_check":  state.last_check.strftime("%H:%M:%S"),
                 "mem_files":   mem_files,
+                "connector":   spec.connector,
+                "api_url":     spec.api_url or "",
+                "sub_agents":  spec.sub_agents,
+                "hidden":      spec.hidden,
             })
         return result

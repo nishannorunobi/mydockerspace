@@ -1,0 +1,9 @@
+{
+  "8085": {
+    "host_port": 8085,
+    "container": "mypostgresql_db-container",
+    "container_ip": "172.17.0.2",
+    "container_port": 8085,
+    "label": "pgweb DB UI"
+  }
+}
