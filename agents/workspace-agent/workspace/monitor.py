@@ -4,6 +4,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Callable, Optional
 
+from scanner import WorkspaceScanner
+
 
 class WorkspaceMonitor(threading.Thread):
     INTERVAL = 15  # seconds between polls
@@ -24,8 +26,14 @@ class WorkspaceMonitor(threading.Thread):
 
     def stop(self):
         self._stop.set()
+        if hasattr(self, "_scanner"):
+            self._scanner.stop()
 
     def run(self):
+        # Start the file-system scanner in parallel
+        self._scanner = WorkspaceScanner()
+        self._scanner.start()
+
         self._last = self._status()
         while not self._stop.wait(self.INTERVAL):
             self._check()

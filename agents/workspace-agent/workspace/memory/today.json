@@ -1,0 +1,280 @@
+{
+  "generated_at": "2026-05-05T19:37:44",
+  "todos": [],
+  "recent_changes": [
+    {
+      "timestamp": "2026-05-05T19:37:44",
+      "path": "agents/agent-orchestrator/logs/server.log",
+      "event": "modified",
+      "size_bytes": 211137
+    },
+    {
+      "timestamp": "2026-05-05T19:37:44",
+      "path": "agents/docker-manager-agent/docker_agent/memory/events.db",
+      "event": "modified",
+      "size_bytes": 385024
+    },
+    {
+      "timestamp": "2026-05-05T19:37:44",
+      "path": "agents/docker-manager-agent/docker_agent/memory/docker_status.json",
+      "event": "modified",
+      "size_bytes": 2925
+    },
+    {
+      "timestamp": "2026-05-05T19:37:44",
+      "path": "agents/workspace-agent/workspace/memory/change_log.md",
+      "event": "modified",
+      "size_bytes": 19938
+    },
+    {
+      "timestamp": "2026-05-05T19:37:44",
+      "path": "agents/workspace-agent/workspace/memory/workspace.db",
+      "event": "modified",
+      "size_bytes": 638976
+    },
+    {
+      "timestamp": "2026-05-05T19:37:44",
+      "path": "agents/workspace-agent/workspace/memory/scan_status.md",
+      "event": "modified",
+      "size_bytes": 2157
+    },
+    {
+      "timestamp": "2026-05-05T19:37:44",
+      "path": "agents/workspace-agent/workspace/memory/today.json",
+      "event": "modified",
+      "size_bytes": 7433
+    },
+    {
+      "timestamp": "2026-05-05T19:37:14",
+      "path": "agents/agent-orchestrator/logs/server.log",
+      "event": "modified",
+      "size_bytes": 210759
+    },
+    {
+      "timestamp": "2026-05-05T19:37:14",
+      "path": "agents/docker-manager-agent/docker_agent/memory/events.db",
+      "event": "modified",
+      "size_bytes": 385024
+    },
+    {
+      "timestamp": "2026-05-05T19:37:14",
+      "path": "agents/docker-manager-agent/docker_agent/memory/docker_status.json",
+      "event": "modified",
+      "size_bytes": 2925
+    },
+    {
+      "timestamp": "2026-05-05T19:37:14",
+      "path": "agents/workspace-agent/workspace/memory/workspace.db",
+      "event": "modified",
+      "size_bytes": 634880
+    },
+    {
+      "timestamp": "2026-05-05T19:37:14",
+      "path": "agents/workspace-agent/workspace/memory/scan_status.md",
+      "event": "modified",
+      "size_bytes": 2157
+    },
+    {
+      "timestamp": "2026-05-05T19:37:14",
+      "path": "agents/workspace-agent/workspace/memory/today.json",
+      "event": "modified",
+      "size_bytes": 7433
+    },
+    {
+      "timestamp": "2026-05-05T19:36:44",
+      "path": "agents/agent-orchestrator/logs/server.log",
+      "event": "modified",
+      "size_bytes": 210559
+    },
+    {
+      "timestamp": "2026-05-05T19:36:44",
+      "path": "agents/docker-manager-agent/docker_agent/memory/events.db",
+      "event": "modified",
+      "size_bytes": 385024
+    }
+  ],
+  "templates": [
+    {
+      "id": 1,
+      "name": "workspace-agent",
+      "project_type": "scripted-service",
+      "root_path": "agents/workspace-agent",
+      "key_files": [
+        "start.sh",
+        "stop.sh",
+        "health.sh",
+        "build.sh"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 2,
+      "name": "docker-manager-agent",
+      "project_type": "scripted-service",
+      "root_path": "agents/docker-manager-agent",
+      "key_files": [
+        "start.sh",
+        "stop.sh",
+        "health.sh",
+        "build.sh"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 3,
+      "name": "mypostgresql_db / db-agent",
+      "project_type": "python-http-agent",
+      "root_path": "projectspace/mypostgresql_db/db-agent",
+      "key_files": [
+        "server.py",
+        "requirements.txt",
+        "start.sh",
+        "stop.sh",
+        "health.sh",
+        "agent.py",
+        "tools.py"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 4,
+      "name": "ums",
+      "project_type": "spring-boot-maven",
+      "root_path": "projectspace/ums",
+      "key_files": [
+        "pom.xml",
+        "src/main/java"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 5,
+      "name": "ums-ui",
+      "project_type": "nodejs-project",
+      "root_path": "projectspace/ums/ums-ui",
+      "key_files": [
+        "package.json",
+        "src"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 6,
+      "name": "ums / ums-agent",
+      "project_type": "python-http-agent",
+      "root_path": "projectspace/ums/ums-agent",
+      "key_files": [
+        "server.py",
+        "requirements.txt",
+        "start.sh",
+        "stop.sh",
+        "health.sh",
+        "agent.py",
+        "tools.py"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 7,
+      "name": "host_scripts",
+      "project_type": "docker-compose-project",
+      "root_path": "projectspace/ums/dockerspace/host_scripts",
+      "key_files": [
+        "docker-compose.yml",
+        "Dockerfile",
+        "Makefile"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 8,
+      "name": "container_scripts",
+      "project_type": "scripted-service",
+      "root_path": "projectspace/ums/dockerspace/container_scripts",
+      "key_files": [
+        "start.sh",
+        "stop.sh",
+        "health.sh"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 9,
+      "name": "workspace-agent",
+      "project_type": "scripted-service",
+      "root_path": "projectspace/temp/myworkspace/agents/workspace-agent",
+      "key_files": [
+        "start.sh",
+        "stop.sh",
+        "health.sh",
+        "build.sh"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    },
+    {
+      "id": 10,
+      "name": "docker-manager-agent",
+      "project_type": "scripted-service",
+      "root_path": "projectspace/temp/myworkspace/agents/docker-manager-agent",
+      "key_files": [
+        "start.sh",
+        "stop.sh",
+        "health.sh",
+        "build.sh"
+      ],
+      "conventions": {},
+      "detected_at": "2026-05-05T18:08:01",
+      "updated_at": "2026-05-05T19:37:44"
+    }
+  ],
+  "scan_stats": {
+    "total": 443,
+    "files": 343,
+    "dirs": 100,
+    "history_events": 1681
+  },
+  "last_scan": {
+    "id": 254,
+    "started_at": "2026-05-05T19:37:44",
+    "finished_at": "2026-05-05T19:37:44",
+    "files_indexed": 443,
+    "files_changed": 9,
+    "files_deleted": 0,
+    "status": "done"
+  },
+  "recent_knowledge": [],
+  "prompt_history": [],
+  "suggestions": [
+    {
+      "level": "info",
+      "message": "9 files modified recently",
+      "source": "file-watch",
+      "ts": "2026-05-05T19:37:44"
+    },
+    {
+      "level": "info",
+      "message": "Knowledge base is empty \u2014 chat with workspace agent to start building memory",
+      "source": "knowledge",
+      "ts": "2026-05-05T19:37:44"
+    }
+  ],
+  "suggestions_updated": "2026-05-05T19:37:44"
+}

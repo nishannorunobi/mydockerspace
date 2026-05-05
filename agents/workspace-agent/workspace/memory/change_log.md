@@ -3,6 +3,46 @@ _Tracks notable workspace changes with dates_
 
 ---
 
+## 2026-05-05 — Autonomous Maintenance Cycle #4
+
+**Health checks run — no files fixed (all passing).**
+
+| Check | Result |
+|---|---|
+| workspace-agent health.sh | ✅ HEALTHY — daemon PID running, 11 memory files |
+| agent-orchestrator health.sh | ✅ HEALTHY — port 8888 responding (HTTP 200), 1674 log lines |
+| docker-manager-agent health.sh | ✅ HEALTHY — port 8889 responding (HTTP 200), docker_status.json current |
+| db-agent health.sh | ⚠️ PostgreSQL not running at host level; deps not installed; INFO: agent not started |
+| ums health.sh | ⚠️ Script runs host-side (no container context) — PID/pg/actuator all show not reachable; expected |
+
+**Containers (docker ps):**
+- `ums-app` — Up 2 hours ✅ — CPU 0.24%, Mem 257.7MiB
+- `mypostgresql_db-container` — Up 2 hours ✅ — CPU 0.16%, Mem 213MiB
+
+**UMS API:** `GET /api/v1/users` → HTTP 200 ✅
+**UMS Actuator:** `GET /actuator/health` → HTTP 500 ❌ — `spring-boot-starter-actuator` not in pom.xml (pre-existing C-016)
+
+**Agent endpoints:**
+- Agent Orchestrator (port 8888) → HTTP 200 ✅
+- Docker Manager Agent (port 8889) → HTTP 200 ✅
+
+**Git status:** Clean — only 3 expected runtime files modified:
+- `docker-manager-agent/memory/docker_status.json` — runtime data ✅
+- `docker-manager-agent/memory/events.db` — runtime data ✅
+- `workspace-agent/memory/change_log.md` — this log ✅
+
+**New files since last cycle (all syntax-checked ✅):**
+- `agents/docker-manager-agent/docker_agent/port_forward.py` — passes py_compile ✅
+- `agents/agent-orchestrator/routers/services.py` — passes py_compile ✅
+- `agents/agent-orchestrator/static/js/urls.js` — passes node --check ✅
+- No hardcoded IPs found in any new file ✅
+
+**C-014 status update:** Large uncommitted batch (agent-orchestrator + docker-manager-agent feature work) still pending owner commit. Now includes port_forward.py, services.py, urls.js in addition to files from cycle #3. All syntax checks pass.
+
+**No autonomous fixes applied this cycle — nothing broken.**
+
+---
+
 ## 2026-05-05 — Autonomous Maintenance Cycle #3
 
 **Health checks run — no files fixed (all passing).**
@@ -152,144 +192,326 @@ _Tracks notable workspace changes with dates_
 
 
 ---
-**2026-05-05 15:01:35** — auto-detected
+**2026-05-05 16:10:31** — auto-detected
   +  M agents/workspace-agent/workspace/memory/concerns.md
 
 ---
-**2026-05-05 15:01:45** — auto-detected
+**2026-05-05 16:10:34** — auto-detected
   +  M agents/workspace-agent/workspace/memory/concerns.md
+
+---
+**2026-05-05 16:11:16** — auto-detected
   +  M agents/workspace-agent/workspace/memory/meta.json
+  +  M agents/workspace-agent/workspace/memory/sessions.md
 
 ---
-**2026-05-05 15:01:50** — auto-detected
+**2026-05-05 16:11:19** — auto-detected
   +  M agents/workspace-agent/workspace/memory/meta.json
+  +  M agents/workspace-agent/workspace/memory/sessions.md
 
 ---
-**2026-05-05 15:10:20** — auto-detected
-  + ?? agents/agent-orchestrator/routers/services.py
+**2026-05-05 16:13:04** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/tools.py
 
 ---
-**2026-05-05 15:10:30** — auto-detected
-  + ?? agents/agent-orchestrator/routers/services.py
+**2026-05-05 16:13:16** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/tools.py
 
 ---
-**2026-05-05 15:11:45** — auto-detected
-  + ?? agents/agent-orchestrator/static/js/urls.js
+**2026-05-05 16:14:31** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/agent.py
 
 ---
-**2026-05-05 15:11:50** — auto-detected
-  + ?? agents/agent-orchestrator/static/js/urls.js
+**2026-05-05 16:14:34** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/agent.py
 
 ---
-**2026-05-05 15:45:16** — auto-detected
-  + ?? agents/docker-manager-agent/docker_agent/port_forward.py
+**2026-05-05 16:22:17** — auto-detected
+  +  M agents/agent-orchestrator/static/js/dashboard.js
 
 ---
-**2026-05-05 15:45:18** — auto-detected
-  + ?? agents/docker-manager-agent/docker_agent/port_forward.py
+**2026-05-05 16:22:19** — auto-detected
+  +  M agents/agent-orchestrator/static/index.html
+  +  M agents/agent-orchestrator/static/js/dashboard.js
 
 ---
-**2026-05-05 15:52:46** — auto-detected
-  + ?? agents/docker-manager-agent/docker_agent/memory/port_forwards.json
+**2026-05-05 16:22:32** — auto-detected
+  +  M agents/agent-orchestrator/static/index.html
 
 ---
-**2026-05-05 15:52:49** — auto-detected
-  + ?? agents/docker-manager-agent/docker_agent/memory/port_forwards.json
+**2026-05-05 16:22:47** — auto-detected
+  +  M agents/agent-orchestrator/static/css/style.css
 
 ---
-**2026-05-05 15:55:16** — auto-detected
-  + A  agents/agent-orchestrator/routers/config.py
-  + A  agents/agent-orchestrator/routers/services.py
-  + A  agents/agent-orchestrator/static/js/urls.js
-  + A  agents/docker-manager-agent/docker_agent/memory/port_forwards.json
-  + A  agents/docker-manager-agent/docker_agent/port_forward.py
+**2026-05-05 16:22:49** — auto-detected
+  +  M agents/agent-orchestrator/static/css/style.css
+
+---
+**2026-05-05 16:28:32** — auto-detected
+  +  M agents/docker-manager-agent/server.conf
+
+---
+**2026-05-05 16:28:34** — auto-detected
+  +  M agents/docker-manager-agent/server.conf
+
+---
+**2026-05-05 16:28:43** — auto-detected
+  +  M agents/docker-manager-agent/server.conf
+
+---
+**2026-05-05 16:29:43** — auto-detected
+  +  M agents/agent-orchestrator/routers/events.py
+  + M .claude/settings.json
+  - M agents/agent-orchestrator/routers/events.py
+
+---
+**2026-05-05 16:29:47** — auto-detected
+  +  M agents/agent-orchestrator/routers/events.py
+  + M .claude/settings.json
+  - M agents/agent-orchestrator/routers/events.py
+
+---
+**2026-05-05 16:29:49** — auto-detected
+  +  M agents/agent-orchestrator/routers/events.py
+  + M .claude/settings.json
+  - M agents/agent-orchestrator/routers/events.py
+
+---
+**2026-05-05 17:15:44** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/monitor.py
+
+---
+**2026-05-05 17:15:48** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/monitor.py
+
+---
+**2026-05-05 17:15:50** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/monitor.py
+
+---
+**2026-05-05 17:23:14** — auto-detected
+  +  M agents/agent-orchestrator/agents.conf
+
+---
+**2026-05-05 17:23:18** — auto-detected
+  +  M agents/agent-orchestrator/agents.conf
+
+---
+**2026-05-05 17:35:40** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/database.py
+
+---
+**2026-05-05 17:35:48** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/database.py
+
+---
+**2026-05-05 17:40:33** — auto-detected
+  +  M agents/agent-orchestrator/connectors/http.py
+
+---
+**2026-05-05 17:40:40** — auto-detected
+  +  M agents/agent-orchestrator/connectors/http.py
+
+---
+**2026-05-05 17:59:34** — auto-detected
+  +  M agents/workspace-agent/workspace/tools.py
+
+---
+**2026-05-05 17:59:36** — auto-detected
+  +  M agents/workspace-agent/workspace/tools.py
+
+---
+**2026-05-05 18:05:21** — auto-detected
+  + ?? agents/workspace-agent/workspace/db.py
+
+---
+**2026-05-05 18:05:34** — auto-detected
+  + ?? agents/workspace-agent/workspace/db.py
+
+---
+**2026-05-05 18:06:04** — auto-detected
+  + ?? agents/workspace-agent/workspace/scanner.py
+
+---
+**2026-05-05 18:06:06** — auto-detected
+  + ?? agents/workspace-agent/workspace/scanner.py
+
+---
+**2026-05-05 18:06:19** — auto-detected
+  +  M agents/workspace-agent/workspace/monitor.py
+
+---
+**2026-05-05 18:06:21** — auto-detected
+  +  M agents/workspace-agent/workspace/monitor.py
+
+---
+**2026-05-05 18:07:49** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db
+
+---
+**2026-05-05 18:07:51** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db
+
+---
+**2026-05-05 18:08:06** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/scan_status.md
+
+---
+**2026-05-05 18:08:15** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/scan_status.md
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:38:37** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:38:52** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:41:07** — auto-detected
+  +  M agents/workspace-agent/workspace/agent.py
+
+---
+**2026-05-05 18:41:15** — auto-detected
+  +  M agents/workspace-agent/workspace/agent.py
+
+---
+**2026-05-05 18:44:15** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:44:22** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/today.json
+
+---
+**2026-05-05 18:44:29** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/today.json
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:44:30** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/today.json
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:54:57** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:54:59** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:58:44** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 18:58:59** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:08:12** — auto-detected
+  + ?? agents/agent-orchestrator/routers/git.py
+
+---
+**2026-05-05 19:08:14** — auto-detected
+  + ?? agents/agent-orchestrator/routers/git.py
+
+---
+**2026-05-05 19:08:27** — auto-detected
+  + ?? agents/agent-orchestrator/routers/console.py
+
+---
+**2026-05-05 19:08:29** — auto-detected
+  + ?? agents/agent-orchestrator/routers/console.py
+
+---
+**2026-05-05 19:08:42** — auto-detected
+  +  M agents/agent-orchestrator/server.py
+
+---
+**2026-05-05 19:08:44** — auto-detected
+  +  M agents/agent-orchestrator/server.py
+
+---
+**2026-05-05 19:10:50** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:18:21** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:18:36** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:21:51** — auto-detected
+  +  M agents/agent-orchestrator/routers/agents.py
+
+---
+**2026-05-05 19:37:36** — auto-detected
+  + A  agents/agent-orchestrator/routers/console.py
+  + A  agents/agent-orchestrator/routers/git.py
+  + A  agents/workspace-agent/workspace/db.py
+  + A  agents/workspace-agent/workspace/memory/scan_status.md
+  + A  agents/workspace-agent/workspace/memory/today.json
+  + A  agents/workspace-agent/workspace/memory/workspace.db
+  + A  agents/workspace-agent/workspace/scanner.py
   + M  .claude/settings.json
-  + M  agents/agent-orchestrator/agent_registry.py
   + M  agents/agent-orchestrator/agents.conf
+  + M  agents/agent-orchestrator/connectors/http.py
   + M  agents/agent-orchestrator/routers/agents.py
-  + M  agents/agent-orchestrator/routers/chat.py
+  + M  agents/agent-orchestrator/routers/events.py
   + M  agents/agent-orchestrator/server.py
   + M  agents/agent-orchestrator/static/css/style.css
   + M  agents/agent-orchestrator/static/index.html
   + M  agents/agent-orchestrator/static/js/dashboard.js
+  + M  agents/docker-manager-agent/docker_agent/agent.py
+  + M  agents/docker-manager-agent/docker_agent/database.py
   + M  agents/docker-manager-agent/docker_agent/memory/docker_status.json
   + M  agents/docker-manager-agent/docker_agent/monitor.py
   + M  agents/docker-manager-agent/docker_agent/server.py
   + M  agents/docker-manager-agent/docker_agent/tools.py
+  + M  agents/docker-manager-agent/server.conf
+  + M  agents/workspace-agent/workspace/agent.py
   + M  agents/workspace-agent/workspace/memory/change_log.md
   + M  agents/workspace-agent/workspace/memory/concerns.md
   + M  agents/workspace-agent/workspace/memory/meta.json
   + M  agents/workspace-agent/workspace/memory/sessions.md
+  + M  agents/workspace-agent/workspace/monitor.py
+  + M  agents/workspace-agent/workspace/tools.py
   + MM agents/docker-manager-agent/docker_agent/memory/events.db
-  -  M agents/agent-orchestrator/agent_registry.py
   -  M agents/agent-orchestrator/agents.conf
+  -  M agents/agent-orchestrator/connectors/http.py
   -  M agents/agent-orchestrator/routers/agents.py
-  -  M agents/agent-orchestrator/routers/chat.py
+  -  M agents/agent-orchestrator/routers/events.py
   -  M agents/agent-orchestrator/server.py
   -  M agents/agent-orchestrator/static/css/style.css
   -  M agents/agent-orchestrator/static/index.html
   -  M agents/agent-orchestrator/static/js/dashboard.js
+  -  M agents/docker-manager-agent/docker_agent/agent.py
+  -  M agents/docker-manager-agent/docker_agent/database.py
   -  M agents/docker-manager-agent/docker_agent/memory/docker_status.json
   -  M agents/docker-manager-agent/docker_agent/memory/events.db
   -  M agents/docker-manager-agent/docker_agent/monitor.py
   -  M agents/docker-manager-agent/docker_agent/server.py
   -  M agents/docker-manager-agent/docker_agent/tools.py
+  -  M agents/docker-manager-agent/server.conf
+  -  M agents/workspace-agent/workspace/agent.py
   -  M agents/workspace-agent/workspace/memory/change_log.md
   -  M agents/workspace-agent/workspace/memory/concerns.md
   -  M agents/workspace-agent/workspace/memory/meta.json
   -  M agents/workspace-agent/workspace/memory/sessions.md
-  - ?? agents/agent-orchestrator/routers/config.py
-  - ?? agents/agent-orchestrator/routers/services.py
-  - ?? agents/agent-orchestrator/static/js/urls.js
-  - ?? agents/docker-manager-agent/docker_agent/memory/port_forwards.json
-  - ?? agents/docker-manager-agent/docker_agent/port_forward.py
-  - M .claude/settings.json
-
----
-**2026-05-05 15:55:19** — auto-detected
-  + A  agents/agent-orchestrator/routers/config.py
-  + A  agents/agent-orchestrator/routers/services.py
-  + A  agents/agent-orchestrator/static/js/urls.js
-  + A  agents/docker-manager-agent/docker_agent/memory/port_forwards.json
-  + A  agents/docker-manager-agent/docker_agent/port_forward.py
-  + M  .claude/settings.json
-  + M  agents/agent-orchestrator/agent_registry.py
-  + M  agents/agent-orchestrator/agents.conf
-  + M  agents/agent-orchestrator/routers/agents.py
-  + M  agents/agent-orchestrator/routers/chat.py
-  + M  agents/agent-orchestrator/server.py
-  + M  agents/agent-orchestrator/static/css/style.css
-  + M  agents/agent-orchestrator/static/index.html
-  + M  agents/agent-orchestrator/static/js/dashboard.js
-  + M  agents/docker-manager-agent/docker_agent/monitor.py
-  + M  agents/docker-manager-agent/docker_agent/server.py
-  + M  agents/docker-manager-agent/docker_agent/tools.py
-  + M  agents/workspace-agent/workspace/memory/concerns.md
-  + M  agents/workspace-agent/workspace/memory/meta.json
-  + M  agents/workspace-agent/workspace/memory/sessions.md
-  + MM agents/docker-manager-agent/docker_agent/memory/docker_status.json
-  + MM agents/docker-manager-agent/docker_agent/memory/events.db
-  + MM agents/workspace-agent/workspace/memory/change_log.md
-  -  M agents/agent-orchestrator/agent_registry.py
-  -  M agents/agent-orchestrator/agents.conf
-  -  M agents/agent-orchestrator/routers/agents.py
-  -  M agents/agent-orchestrator/routers/chat.py
-  -  M agents/agent-orchestrator/server.py
-  -  M agents/agent-orchestrator/static/css/style.css
-  -  M agents/agent-orchestrator/static/index.html
-  -  M agents/agent-orchestrator/static/js/dashboard.js
-  -  M agents/docker-manager-agent/docker_agent/memory/docker_status.json
-  -  M agents/docker-manager-agent/docker_agent/memory/events.db
-  -  M agents/docker-manager-agent/docker_agent/monitor.py
-  -  M agents/docker-manager-agent/docker_agent/server.py
-  -  M agents/docker-manager-agent/docker_agent/tools.py
-  -  M agents/workspace-agent/workspace/memory/change_log.md
-  -  M agents/workspace-agent/workspace/memory/concerns.md
-  -  M agents/workspace-agent/workspace/memory/meta.json
-  -  M agents/workspace-agent/workspace/memory/sessions.md
-  - ?? agents/agent-orchestrator/routers/config.py
-  - ?? agents/agent-orchestrator/routers/services.py
-  - ?? agents/agent-orchestrator/static/js/urls.js
-  - ?? agents/docker-manager-agent/docker_agent/memory/port_forwards.json
-  - ?? agents/docker-manager-agent/docker_agent/port_forward.py
+  -  M agents/workspace-agent/workspace/monitor.py
+  -  M agents/workspace-agent/workspace/tools.py
+  - ?? agents/agent-orchestrator/routers/console.py
+  - ?? agents/agent-orchestrator/routers/git.py
+  - ?? agents/workspace-agent/workspace/db.py
+  - ?? agents/workspace-agent/workspace/memory/scan_status.md
+  - ?? agents/workspace-agent/workspace/memory/today.json
+  - ?? agents/workspace-agent/workspace/memory/workspace.db
+  - ?? agents/workspace-agent/workspace/scanner.py
   - M .claude/settings.json

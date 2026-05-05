@@ -23,7 +23,9 @@ import asyncio
 import json
 import os
 import smtplib
+import subprocess
 import sys
+import threading
 from datetime import datetime
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -31,7 +33,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import anthropic as _anthropic
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
@@ -111,10 +113,75 @@ def _send_notification(container_name: str, event: str, detail: str):
         pass  # email is best-effort; container management continues regardless
 
 
+_ORCHESTRATOR_EVENTS_URL = "http://localhost:8888/api/events/notify"
+
+
+def _notify_orchestrator(event: str, source: str, container: str, data: dict):
+    """Push an event to the orchestrator SSE stream so the dashboard sees it."""
+    try:
+        payload = json.dumps({
+            "source":    source,
+            "event":     event,
+            "container": container,
+            "data":      data,
+        }).encode()
+        req = _urllib_req.Request(
+            _ORCHESTRATOR_EVENTS_URL, data=payload,
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        _urllib_req.urlopen(req, timeout=5)
+    except Exception:
+        pass  # best-effort; dashboard notification is non-critical
+
+
+def _bell_rings() -> int:
+    """Read BELL_RINGS from server.conf at call time so changes take effect without restart."""
+    try:
+        conf = (BASE_DIR.parent / "server.conf").read_text()
+        for line in conf.splitlines():
+            if line.strip().startswith("BELL_RINGS="):
+                return max(1, int(line.split("=", 1)[1].strip()))
+    except Exception:
+        pass
+    return 5
+
+
+def _ring_bell():
+    """Ring the host terminal bell N times (configurable via server.conf BELL_RINGS)."""
+    n = _bell_rings()
+    try:
+        _sp.Popen(
+            ["bash", "-c", f"for i in $(seq {n}); do printf '\\a'; sleep 0.3; done"],
+            stdout=_sp.DEVNULL, stderr=_sp.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
+def _auto_resolve(task: str, source: str = "", container: str = "", event_data: dict = None):
+    """Run the AI agent in a background thread to resolve a host-side issue autonomously."""
+    try:
+        history = ai_agent.run_agent(task, [])
+        # Extract the AI's final response and forward it to the dashboard
+        response = ""
+        for msg in reversed(history):
+            if isinstance(msg, dict) and msg.get("role") == "assistant":
+                content = msg.get("content", "")
+                if isinstance(content, str) and content.strip():
+                    response = content.strip()
+                    break
+        _notify_orchestrator("auto_resolve_complete", source or "docker-manager",
+                             container, {"summary": response[:500], "original": event_data or {}})
+    except Exception as e:
+        _notify_orchestrator("auto_resolve_failed", source or "docker-manager",
+                             container, {"error": str(e), "original": event_data or {}})
+
+
 @app.on_event("startup")
 async def startup():
     pf.restore_from_disk()  # re-launch saved socat tunnels
     db.init()
+    db.seed_default_agents()  # register db-agent + ums-agent if not already in DB
     monitor = DockerMonitor(on_event=_send_notification)
     monitor.start()
     app.state.monitor = monitor
@@ -139,6 +206,12 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok", "agent": "docker-orchestrator", "time": datetime.now().isoformat()}
+
+
+@app.get("/api/config")
+def get_config():
+    """Runtime-readable config values. Read from server.conf at request time — no restart needed."""
+    return {"bell_rings": _bell_rings()}
 
 
 # ── Status snapshot ────────────────────────────────────────────────────────────
@@ -239,6 +312,42 @@ def restart_one(name: str):
     return {"success": True, "container": name, "message": msg}
 
 
+@app.post("/api/containers/{name}/clean-restart")
+def clean_restart_one(name: str):
+    """
+    Recreate a container from its compose/start scripts — picks up volume mounts,
+    image rebuilds, and config changes that a plain `docker restart` misses.
+    Runs in the background; returns immediately.
+    """
+    reg = db.get_registration_by_container(name)
+    if not reg or not reg.get("compose_dir"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"No compose config registered for '{name}'. "
+                   "Register the agent with compose_dir via POST /api/agents/register."
+        )
+    compose_dir = reg["compose_dir"]
+    cmd         = reg.get("clean_restart_cmd") or "make restart"
+
+    def _do_clean_restart():
+        db.log_event(name, name, "clean_restart_started", f"cmd: {cmd} in {compose_dir}")
+        try:
+            result = subprocess.run(
+                cmd, shell=True, cwd=compose_dir,
+                capture_output=True, text=True, timeout=180,
+            )
+            out   = (result.stdout + result.stderr).strip()
+            event = "clean_restarted" if result.returncode == 0 else "clean_restart_failed"
+            db.log_event(name, name, event, out[:500])
+        except subprocess.TimeoutExpired:
+            db.log_event(name, name, "clean_restart_failed", "timed out after 180s")
+        except Exception as e:
+            db.log_event(name, name, "clean_restart_failed", str(e))
+
+    threading.Thread(target=_do_clean_restart, daemon=True).start()
+    return {"success": True, "container": name, "message": f"Clean restart started — rebuilding from {compose_dir}"}
+
+
 # ── Events ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/events")
@@ -251,6 +360,102 @@ def get_events(limit: int = 50, container: str = None):
         "count":  limit,
         "events": db.get_events(limit=limit, container_name=container),
     }
+
+
+# ── Agent event bus ────────────────────────────────────────────────────────────
+# Container-side agents POST here to trigger host-side actions.
+# Reachable at http://172.19.0.1:8889/api/agent-events from inside any container.
+
+class AgentEventBody(BaseModel):
+    source:    str        # which agent fired this (e.g. "db-agent")
+    event:     str        # event type: service_started | service_stopped | task_complete | ...
+    container: str = ""  # container name — needed for port-forward IP resolution
+    data:      dict = {} # event payload (service, port, host_port, label, ...)
+
+
+@app.get("/api/agent-events")
+def get_agent_events(limit: int = 50, source: str = None):
+    """
+    Telemetry log — all events fired by container and host agents.
+    Filter by ?source=db-agent to see one agent's events only.
+    """
+    events = db.get_events(limit=limit)
+    agent_events = [e for e in events if e.get("event_type", "").startswith("agent_event:")]
+    if source:
+        agent_events = [e for e in agent_events if source in e.get("container_name", "")]
+    for e in agent_events:
+        e["event"] = e.get("event_type", "").removeprefix("agent_event:")
+        try:
+            e["data"] = json.loads(e.get("details", "{}"))
+        except Exception:
+            e["data"] = {}
+    return {"count": len(agent_events), "events": agent_events}
+
+
+@app.post("/api/agent-events")
+def handle_agent_event(body: AgentEventBody):
+    """
+    Cross-agent event bus — any agent (inside or outside a container) POSTs here.
+    Handles: service_started (port-forward), service_stopped (close tunnel),
+    install_error / action_required (AI auto-resolve), everything else (telemetry log).
+    """
+    _db_container = body.container or body.source
+    db.log_event(_db_container, _db_container,
+                 f"agent_event:{body.event}", json.dumps(body.data)[:500])
+    # Always push telemetry to the dashboard SSE stream
+    _notify_orchestrator(body.event, body.source, body.container, body.data)
+
+    if body.event == "service_started":
+        port      = body.data.get("port")
+        host_port = body.data.get("host_port", port)
+        label     = body.data.get("label") or body.data.get("service", "")
+        if port and body.container:
+            ip = _container_ip(body.container)
+            if ip:
+                result = pf.start(
+                    host_port=int(host_port),
+                    container_ip=ip,
+                    container_port=int(port),
+                    container=body.container,
+                    label=label,
+                )
+                return {"ok": True, "event": body.event, "action": "port_forwarded", "result": result}
+        return {"ok": True, "event": body.event, "action": "logged",
+                "note": "no container/port specified — nothing to forward"}
+
+    if body.event == "service_stopped":
+        host_port = body.data.get("host_port") or body.data.get("port")
+        if host_port:
+            result = pf.stop(int(host_port))
+            return {"ok": True, "event": body.event, "action": "port_forward_stopped", "result": result}
+        return {"ok": True, "event": body.event, "action": "logged"}
+
+    if body.event in ("install_error", "action_required"):
+        # Container agent hit an error or needs something from the host.
+        # Dispatch the AI agent to diagnose and fix it autonomously.
+        task = (
+            f"A container agent ({body.source}) inside {body.container or 'a container'} "
+            f"reported an event: '{body.event}'. Details: {json.dumps(body.data)}. "
+            f"Investigate the error and take whatever host-side or container-side actions "
+            f"are needed to resolve it. Use run_host_command, exec_in_container, or "
+            f"manage_port_forward as appropriate. "
+            f"If you cannot resolve it without user help, call request_user_input to alert the user. "
+            f"Proceed autonomously without asking for confirmation."
+        )
+        threading.Thread(
+            target=_auto_resolve,
+            args=(task,),
+            kwargs={"source": body.source, "container": body.container, "event_data": body.data},
+            daemon=True,
+        ).start()
+        return {"ok": True, "event": body.event, "action": "dispatched_to_ai",
+                "note": "AI agent is resolving the issue autonomously"}
+
+    if body.event == "user_intervention_required":
+        _ring_bell()
+        return {"ok": True, "event": body.event, "action": "bell_rung"}
+
+    return {"ok": True, "event": body.event, "action": "logged"}
 
 
 # ── Port forwarding ────────────────────────────────────────────────────────────
@@ -421,110 +626,104 @@ async def ws_chat(ws: WebSocket):
         pass
 
 
-# ── DB Agent proxy routes ──────────────────────────────────────────────────────
-# The docker-manager-agent proxies HTTP and WS calls to the db-agent
-# running inside mypostgresql_db-container on ums-network.
+# ── Dynamic agent proxy ────────────────────────────────────────────────────────
+# Agents are registered in SQLite (agent_registrations table).
+# Any registered agent is proxied at /api/agents/{agent_id}/...
+# No restart needed — register via POST /api/agents/register.
 
+import time as _time
 import urllib.request as _urllib_req
 import urllib.error   as _urllib_err
 import subprocess     as _sp
 
-_DB_AGENT_CONTAINER = "mypostgresql_db-container"
-_DB_AGENT_PORT      = 8890
-_DB_AGENT_NETWORK   = "ums-network"
+_AGENT_NETWORK = "ums-network"
 
 
-def _db_agent_base_url() -> str | None:
+def _container_url(container: str, port: int, network: str = _AGENT_NETWORK) -> str | None:
+    """Resolve the container's IP on the given docker network and return its base URL."""
     try:
         r = _sp.run(
-            ["docker", "inspect", _DB_AGENT_CONTAINER, "--format", "{{json .NetworkSettings.Networks}}"],
+            ["docker", "inspect", container, "--format", "{{json .NetworkSettings.Networks}}"],
             capture_output=True, text=True, timeout=5,
         )
         if r.returncode != 0:
             return None
         networks = json.loads(r.stdout.strip())
-        ip = (networks.get(_DB_AGENT_NETWORK) or {}).get("IPAddress", "")
-        return f"http://{ip}:{_DB_AGENT_PORT}" if ip else None
+        ip = (networks.get(network) or {}).get("IPAddress", "")
+        return f"http://{ip}:{port}" if ip else None
     except Exception:
         return None
 
 
-def _db_proxy_get(path: str) -> dict:
-    base = _db_agent_base_url()
-    if not base:
-        return {"error": f"{_DB_AGENT_CONTAINER} not reachable on {_DB_AGENT_NETWORK}"}
-    try:
-        with _urllib_req.urlopen(f"{base}{path}", timeout=10) as r:
-            return json.loads(r.read())
-    except Exception as e:
-        return {"error": str(e)}
+def _agent_url(agent_id: str) -> str | None:
+    reg = db.get_agent_registration(agent_id)
+    if not reg:
+        return None
+    return _container_url(reg["container"], reg["port"], reg["network"])
 
 
-def _db_proxy_post(path: str, payload: dict | None = None) -> dict:
-    base = _db_agent_base_url()
-    if not base:
-        return {"error": f"{_DB_AGENT_CONTAINER} not reachable on {_DB_AGENT_NETWORK}"}
-    data = json.dumps(payload or {}).encode()
-    req  = _urllib_req.Request(f"{base}{path}", data=data,
-                               headers={"Content-Type": "application/json"}, method="POST")
-    try:
-        with _urllib_req.urlopen(req, timeout=90) as r:
-            return json.loads(r.read())
-    except _urllib_err.HTTPError as e:
-        body = e.read().decode(errors="replace")
-        try:
-            return json.loads(body)
-        except Exception:
-            return {"error": f"HTTP {e.code}: {body[:300]}"}
-    except Exception as e:
-        return {"error": str(e)}
+# ── Agent registry API ─────────────────────────────────────────────────────────
+
+class AgentRegistrationBody(BaseModel):
+    id:         str
+    name:       str
+    container:  str
+    port:       int
+    agent_path: str
+    network:    str = "ums-network"
 
 
-@app.get("/api/db-agent/health")
-async def db_agent_health():
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _db_proxy_get, "/health")
+@app.get("/api/registered-agents")
+def list_registered_agents():
+    return {"agents": db.get_agent_registrations()}
 
 
-@app.post("/api/db-agent/db/start")
-async def db_agent_start():
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _db_proxy_post, "/api/db/start", None)
-
-
-@app.post("/api/db-agent/db/stop")
-async def db_agent_stop():
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _db_proxy_post, "/api/db/stop", None)
-
-
-@app.post("/api/db-agent/api/tasks")
-async def db_agent_task(body: TaskRequest):
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
-        None, _db_proxy_post, "/api/tasks", {"task": body.task}
+@app.post("/api/agents/register")
+def register_agent(body: AgentRegistrationBody):
+    db.register_agent(
+        id=body.id, name=body.name, container=body.container,
+        port=body.port, agent_path=body.agent_path, network=body.network,
     )
-    return result
+    return {"ok": True, "registered": body.id}
 
 
-@app.websocket("/api/db-agent/ws/chat")
-async def db_agent_ws_chat(client_ws: WebSocket):
-    """Proxy WebSocket chat directly to the db-agent inside the container."""
+@app.delete("/api/agents/{agent_id}/unregister")
+def unregister_agent(agent_id: str):
+    if not db.get_agent_registration(agent_id):
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not registered")
+    db.unregister_agent(agent_id)
+    return {"ok": True, "unregistered": agent_id}
+
+
+# ── Generic agent proxy ────────────────────────────────────────────────────────
+# All HTTP paths under /api/agents/{agent_id}/ are proxied to the container agent.
+# WebSocket at /api/agents/{agent_id}/ws/chat is proxied separately.
+# Every request/response is logged to agent_comms in SQLite.
+
+@app.websocket("/api/agents/{agent_id}/ws/chat")
+async def agent_ws_chat(agent_id: str, client_ws: WebSocket):
     await client_ws.accept()
-    import websockets
+    import websockets as _ws
 
-    base = _db_agent_base_url()
+    reg = db.get_agent_registration(agent_id)
+    if not reg:
+        await client_ws.send_json({"type": "error", "content": f"Agent '{agent_id}' not registered"})
+        await client_ws.send_json({"type": "done"})
+        return
+
+    base = _container_url(reg["container"], reg["port"], reg["network"])
     if not base:
         await client_ws.send_json({
             "type": "error",
-            "content": f"DB agent not reachable — is {_DB_AGENT_CONTAINER} running?",
+            "content": f"Agent '{agent_id}' not reachable — is {reg['container']} running and agent built?",
         })
         await client_ws.send_json({"type": "done"})
         return
 
+    db.log_agent_comm(agent_id, "ws", "/ws/chat", "session opened")
     ws_url = base.replace("http://", "ws://") + "/ws/chat"
     try:
-        async with websockets.connect(ws_url) as agent_ws:
+        async with _ws.connect(ws_url) as agent_ws:
             async def _to_agent():
                 try:
                     while True:
@@ -547,5 +746,57 @@ async def db_agent_ws_chat(client_ws: WebSocket):
             for t in (t1, t2):
                 t.cancel()
     except Exception as e:
-        await client_ws.send_json({"type": "error", "content": f"Cannot reach db-agent: {e}"})
+        await client_ws.send_json({"type": "error", "content": f"Cannot reach {agent_id}: {e}"})
         await client_ws.send_json({"type": "done"})
+
+
+@app.api_route("/api/agents/{agent_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def agent_proxy(agent_id: str, path: str, request: Request):
+    # Special internal path — served locally, not proxied
+    if path == "comms":
+        limit = int(request.query_params.get("limit", 50))
+        return JSONResponse({"agent_id": agent_id, "comms": db.get_agent_comms(agent_id, limit)})
+
+    reg = db.get_agent_registration(agent_id)
+    if not reg:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not registered")
+
+    base = _container_url(reg["container"], reg["port"], reg["network"])
+    if not base:
+        return JSONResponse(
+            {"error": f"Agent '{agent_id}' not reachable — is {reg['container']} running?"},
+            status_code=503,
+        )
+
+    method  = request.method
+    body    = await request.body()
+    url     = f"{base}/{path}"
+    t0      = _time.time()
+
+    try:
+        req = _urllib_req.Request(
+            url,
+            data=body if body else None,
+            headers={"Content-Type": request.headers.get("content-type", "application/json")},
+            method=method,
+        )
+        timeout = 90 if path.endswith("/tasks") else 15
+        with _urllib_req.urlopen(req, timeout=timeout) as r:
+            result_bytes = r.read()
+            duration = int((_time.time() - t0) * 1000)
+            db.log_agent_comm(
+                agent_id=agent_id, direction="response",
+                path=f"{method} /{path}",
+                payload=body.decode(errors="replace") if body else "",
+                result=result_bytes.decode(errors="replace"),
+                duration_ms=duration,
+            )
+            return JSONResponse(json.loads(result_bytes))
+    except _urllib_err.HTTPError as e:
+        err_body = e.read().decode(errors="replace")
+        try:
+            return JSONResponse(json.loads(err_body), status_code=e.code)
+        except Exception:
+            return JSONResponse({"error": f"HTTP {e.code}: {err_body[:300]}"}, status_code=e.code)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=503)

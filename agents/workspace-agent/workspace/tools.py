@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
+import db as _db
+
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent.parent  # workspace/→agents/→workspace-agent/→myworkspace/
 AGENT_DIR      = Path(__file__).resolve().parent
 MEMORY_DIR     = AGENT_DIR / "memory"
@@ -202,6 +204,176 @@ TOOL_DEFINITIONS = [
                 }
             },
             "required": ["message", "paths"]
+        }
+    },
+    {
+        "name": "add_todo",
+        "description": (
+            "Add a task to the persistent to-do list. "
+            "Use when you detect something that needs to be done, a user asks you to remember a task, "
+            "or an autonomous check finds an issue to fix later."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "text":     {"type": "string", "description": "What needs to be done"},
+                "priority": {"type": "string", "description": "low | normal | high | urgent (default: normal)"},
+                "due_date": {"type": "string", "description": "Optional date string, e.g. '2026-05-10'"},
+                "source":   {"type": "string", "description": "manual | agent | autonomous"}
+            },
+            "required": ["text"]
+        }
+    },
+    {
+        "name": "complete_todo",
+        "description": "Mark a to-do item as done by its ID.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "todo_id": {"type": "integer", "description": "The ID from list_todos"}
+            },
+            "required": ["todo_id"]
+        }
+    },
+    {
+        "name": "list_todos",
+        "description": "List to-do items. Default is open items only.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "description": "open | done | cancelled | all (default: open)"}
+            }
+        }
+    },
+    {
+        "name": "log_prompt",
+        "description": (
+            "Save a user prompt and your response summary to permanent history. "
+            "ALWAYS call this at the end of handling a user request so nothing is ever forgotten."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prompt":     {"type": "string", "description": "The user's original message"},
+                "response":   {"type": "string", "description": "1-2 sentence summary of what you did"},
+                "session_id": {"type": "string", "description": "Optional session identifier"}
+            },
+            "required": ["prompt", "response"]
+        }
+    },
+    {
+        "name": "get_prompt_history",
+        "description": "Retrieve past user prompts and responses to understand work history and style.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit":      {"type": "integer", "description": "Number of records (default 20)"},
+                "session_id": {"type": "string",  "description": "Filter to a specific session"}
+            }
+        }
+    },
+    {
+        "name": "search_files_db",
+        "description": (
+            "Search the persistent workspace file index (SQLite). "
+            "Returns matching files with path, size, and last-seen timestamp. "
+            "Much faster than scanning the filesystem. Use for 'find all Python files', "
+            "'does this path exist', 'what changed recently', etc."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "pattern": {"type": "string",  "description": "Substring to match against file path (e.g. 'server.py', 'ums-agent', '.conf')"},
+                "type":    {"type": "string",  "description": "'file' or 'dir' — omit for both"},
+                "limit":   {"type": "integer", "description": "Max results (default 50)"}
+            }
+        }
+    },
+    {
+        "name": "get_file_history",
+        "description": "Get the change history for a file or path pattern — shows created/modified/deleted events with timestamps.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path":  {"type": "string",  "description": "File path or substring (e.g. 'tools.py', 'ums-agent')"},
+                "limit": {"type": "integer", "description": "Number of events (default 30)"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "get_recent_changes",
+        "description": "Get the most recently created/modified/deleted files across the whole workspace.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "description": "Number of events (default 30)"}
+            }
+        }
+    },
+    {
+        "name": "get_templates",
+        "description": (
+            "List auto-detected project templates in the workspace. "
+            "Each template shows the project type (python-http-agent, docker-compose-project, spring-boot-maven, etc.), "
+            "its root path, and the key files that define it. "
+            "Use when creating a new project to follow the established pattern."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "project_type": {"type": "string", "description": "Filter by type, e.g. 'python-http-agent'. Omit to list all."}
+            }
+        }
+    },
+    {
+        "name": "save_knowledge",
+        "description": (
+            "Write a persistent observation to the workspace knowledge base. "
+            "Use to record conventions, patterns, anomalies, rules, or notes that "
+            "should be remembered across sessions and shared with other agents."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category":    {"type": "string", "description": "One of: convention, pattern, anomaly, rule, note"},
+                "title":       {"type": "string", "description": "Short identifier, e.g. 'Python agent start script convention'"},
+                "body":        {"type": "string", "description": "Full description"},
+                "source_path": {"type": "string", "description": "Relevant file or directory path (optional)"}
+            },
+            "required": ["category", "title", "body"]
+        }
+    },
+    {
+        "name": "get_knowledge",
+        "description": "Query the workspace knowledge base — conventions, patterns, anomalies, rules recorded by the agent.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category": {"type": "string", "description": "Filter by: convention, pattern, anomaly, rule, note"},
+                "search":   {"type": "string", "description": "Text search across title + body"}
+            }
+        }
+    },
+    {
+        "name": "get_scan_stats",
+        "description": "Return workspace scanner statistics — total files indexed, last scan time, recent change count.",
+        "input_schema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "docker_clean_restart",
+        "description": (
+            "Trigger a clean restart of a Docker container — stops, removes, and recreates it "
+            "from its compose file or start scripts, picking up volume mounts and image changes. "
+            "Unlike 'docker restart', this applies changes to docker-compose.yml. "
+            "Use when a container needs to be recreated, not just restarted."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "container": {"type": "string", "description": "Container name (e.g. 'ums-app', 'mypostgresql_db-container')"}
+            },
+            "required": ["container"]
         }
     },
     {
@@ -425,6 +597,105 @@ def execute_tool(name: str, inp: dict) -> dict:
             }
         except Exception as e:
             return {"error": str(e)}
+
+    if name == "add_todo":
+        _db.init()
+        tid = _db.add_todo(
+            text     = inp["text"],
+            priority = inp.get("priority", "normal"),
+            due_date = inp.get("due_date", ""),
+            source   = inp.get("source", "agent"),
+        )
+        return {"added": True, "todo_id": tid, "text": inp["text"]}
+
+    if name == "complete_todo":
+        _db.init()
+        _db.complete_todo(inp["todo_id"])
+        return {"completed": True, "todo_id": inp["todo_id"]}
+
+    if name == "list_todos":
+        _db.init()
+        rows = _db.get_todos(status=inp.get("status", "open"))
+        return {"count": len(rows), "todos": rows}
+
+    if name == "log_prompt":
+        _db.init()
+        _db.log_prompt(
+            prompt     = inp["prompt"],
+            response   = inp.get("response", ""),
+            session_id = inp.get("session_id", ""),
+        )
+        return {"logged": True}
+
+    if name == "get_prompt_history":
+        _db.init()
+        rows = _db.get_prompt_history(
+            limit      = inp.get("limit", 20),
+            session_id = inp.get("session_id", ""),
+        )
+        return {"count": len(rows), "history": rows}
+
+    if name == "search_files_db":
+        _db.init()
+        pattern = inp.get("pattern", "")
+        ftype   = inp.get("type", "")
+        limit   = min(inp.get("limit", 50), 200)
+        rows    = _db.get_files(path_like=pattern, ftype=ftype)[:limit]
+        return {"count": len(rows), "files": rows}
+
+    if name == "get_file_history":
+        _db.init()
+        rows = _db.get_file_history(inp["path"], limit=inp.get("limit", 30))
+        return {"count": len(rows), "history": rows}
+
+    if name == "get_recent_changes":
+        _db.init()
+        rows = _db.get_recent_changes(limit=inp.get("limit", 30))
+        return {"count": len(rows), "changes": rows}
+
+    if name == "get_templates":
+        _db.init()
+        rows = _db.get_templates(project_type=inp.get("project_type", ""))
+        return {"count": len(rows), "templates": rows}
+
+    if name == "save_knowledge":
+        _db.init()
+        _db.save_knowledge(
+            category    = inp["category"],
+            title       = inp["title"],
+            body        = inp["body"],
+            source_path = inp.get("source_path", ""),
+        )
+        return {"saved": True, "title": inp["title"]}
+
+    if name == "get_knowledge":
+        _db.init()
+        rows = _db.get_knowledge(
+            category = inp.get("category", ""),
+            search   = inp.get("search", ""),
+        )
+        return {"count": len(rows), "knowledge": rows}
+
+    if name == "get_scan_stats":
+        _db.init()
+        stats = _db.count_files()
+        last  = _db.get_last_scan()
+        return {"file_counts": stats, "last_scan": last}
+
+    if name == "docker_clean_restart":
+        import urllib.request as _req
+        import urllib.error   as _err
+        container = inp["container"]
+        url       = f"http://localhost:8889/api/containers/{container}/clean-restart"
+        try:
+            req = _req.Request(url, data=b"{}", headers={"Content-Type": "application/json"}, method="POST")
+            with _req.urlopen(req, timeout=10) as resp:
+                body = json.loads(resp.read())
+                return {"started": True, "message": body.get("message", "clean restart started")}
+        except _err.HTTPError as e:
+            return {"error": f"HTTP {e.code}: {e.read().decode()}"}
+        except Exception as e:
+            return {"error": f"Could not reach docker-manager-agent: {e}"}
 
     if name == "send_email":
         import smtplib

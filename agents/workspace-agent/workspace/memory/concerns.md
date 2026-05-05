@@ -1,5 +1,5 @@
 # Open Concerns & Flagged Anomalies
-_Last updated: 2026-05-05 (Autonomous maintenance cycle #3)_
+_Last updated: 2026-05-05 (Autonomous maintenance cycle #5)_
 
 ---
 
@@ -16,6 +16,7 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #3)_
 - **File:** `projectspace/ums/dockerspace/host_scripts/docker-compose.yml`
 - **Issue:** `env_file: ../../.env` — an `.env` file is used.
 - **Verified 2026-04-29:** `ums/.gitignore` contains `.env` — credential leak risk is LOW. `.env` file exists on disk but is gitignored.
+- **Verified 2026-05-05 cycle #5:** `git ls-files "*.env"` returns empty — no .env files tracked in git ✅
 - **Remaining action:** Consider switching to `ums/project.conf` pattern to align with workspace convention.
 - **Status:** PARTIALLY RESOLVED — gitignore confirmed; convention drift remains
 
@@ -27,21 +28,35 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #3)_
 - **File:** `agents/dashboard-agent/` (24 files staged as deleted in git status)
 - **Context:** Commit `42656d6` moved dashboard-agent to `agents/agent-orchestrator/`. Deletions are correct but uncommitted.
 - **Risk:** Low — agent-orchestrator is HEALTHY on port 8888. But git index is dirty.
-- **Fix:** `git add -A && git commit -m "remove stale dashboard-agent path"`
-- **Status:** OPEN — still dirty as of 2026-05-05 cycle #3
+- **Fix:** Owner should commit these deletions along with C-014 feature work
+- **Status:** OPEN — still dirty as of 2026-05-05 cycle #5
 
-### C-014 — Large batch of uncommitted modifications (897 insertions, 16 files)
-- **Files modified since last commit `c9dc3ac`:**
-  - `agents/agent-orchestrator/` — agents.conf, agent_registry.py, routers/agents.py, routers/chat.py, server.py, static/css/style.css, static/index.html, static/js/dashboard.js
-  - `agents/docker-manager-agent/docker_agent/` — monitor.py (start/stop/db-agent autostart), server.py (new endpoints + db-agent proxy), tools.py (extended)
-  - `agents/docker-manager-agent/docker_agent/memory/` — docker_status.json, events.db (runtime data)
-  - `.claude/settings.json`
-- **Untracked:** `agents/agent-orchestrator/routers/config.py` (new API key management router)
+### C-014 — Large batch of uncommitted modifications (1,358 insertions, 21 files)
+- **Files modified since last commit `c9dc3ac` (2026-04-29):**
+  - `agents/agent-orchestrator/` — agents.conf, connectors/http.py, routers/events.py, static/css/style.css, static/index.html, static/js/dashboard.js
+  - `agents/docker-manager-agent/docker_agent/` — agent.py, database.py (NEW), monitor.py, server.py, tools.py
+  - `agents/docker-manager-agent/docker_agent/memory/docker_status.json` — runtime data
+  - `agents/docker-manager-agent/docker_agent/memory/events.db` — runtime data (binary)
+  - `agents/docker-manager-agent/server.conf` — BELL_RINGS config added
+  - `.claude/settings.json` — permission list expanded
+  - `agents/workspace-agent/workspace/` — monitor.py, tools.py, memory files
+- **New untracked files (all syntax ✅):**
+  - `agents/workspace-agent/workspace/db.py` — SQLite database module
+  - `agents/workspace-agent/workspace/scanner.py` — background workspace scanner
+  - `agents/workspace-agent/workspace/memory/scan_status.md` — scanner output
+  - `agents/workspace-agent/workspace/memory/workspace.db` — SQLite DB (binary, should be gitignored)
 - **All syntax checks pass** — no broken files found
-- **No hardcoded IPs** — all container refs use names
-- **Risk:** Significant feature work uncommitted. Changes lost on branch reset.
-- **Fix:** Owner should commit: `git add agents/agent-orchestrator/ agents/docker-manager-agent/ .claude/settings.json && git commit -m "..."`
-- **Status:** UPDATED from C-014 (was workspace-agent changes) — now covers full agent feature batch
+- **No hardcoded IPs in code** — one comment-only reference at server.py:367 (safe)
+- **Risk:** Significant feature work (db.py + scanner.py = new persistence layer for workspace-agent). workspace.db binary not in .gitignore — should be checked.
+- **Fix:** Owner should commit feature work; ensure workspace.db is in .gitignore
+- **Status:** UPDATED cycle #5 — db.py and scanner.py are new additions (workspace scanner feature)
+
+### C-017 — `workspace.db` binary may not be gitignored (NEW — cycle #5)
+- **File:** `agents/workspace-agent/workspace/memory/workspace.db`
+- **Issue:** This SQLite binary is untracked (`??`) in git status — which is correct behaviour IF it is in .gitignore. Needs verification that .gitignore covers it.
+- **Risk:** If not gitignored, the binary could be accidentally committed on next `git add -A`
+- **Fix:** Verify `agents/workspace-agent/.gitignore` or root `.gitignore` covers `*.db` / `workspace.db`; add if missing
+- **Status:** NEW — flagged cycle #5, not yet verified
 
 ### C-003 — `mywritings.zip` in projectspace root
 - **File:** `projectspace/mywritings.zip`
@@ -75,13 +90,13 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #3)_
 - **Fix:** Move to `mountspace/`
 - **Status:** OPEN
 
-### C-016 — UMS `/actuator/health` returns HTTP 500 (NEW)
-- **Container:** `ums-app` (Spring Boot 3 / Java 21)
-- **Issue:** `GET /actuator/health` → 500. Log shows: `NoResourceFoundException: No static resource actuator/health.` — Spring Boot Actuator is not enabled or not exposed on the management port.
-- **Impact:** claude-agent health.sh marks UMS as OK (uses HTTP 500 as "reachable") but Actuator metrics/health are inaccessible. Monitoring blind spot.
-- **API is functional:** `GET /api/v1/users` returns correct data. Application itself is working.
-- **Fix:** Add to `application.properties` or `application.yml`: `management.endpoints.web.exposure.include=health,info` — rebuild and redeploy ums-app.
-- **Status:** NEW — identified 2026-05-05 cycle #3. Not auto-fixed (requires rebuild).
+### C-016 — UMS `/actuator/health` returns HTTP 500 (confirmed cycle #5)
+- **Container:** `ums-app` (Spring Boot 3 / Java 21) — Up 27 min as of this cycle
+- **Root cause confirmed:** `spring-boot-starter-actuator` is **not present in pom.xml** at all.
+- **API is functional:** `GET /api/v1/users` → HTTP 200 ✅. Application working correctly.
+- **Impact:** No Actuator health/metrics available. health.sh shows failures from host (expected — runs outside container). UMS ums-agent/health.sh reports FAIL for this reason.
+- **Fix:** Add `spring-boot-starter-actuator` to pom.xml, expose endpoint in application.yml, rebuild ums-app.
+- **Status:** CONFIRMED cycle #5 — not auto-fixed (requires pom.xml change + rebuild + redeploy)
 
 ---
 
@@ -98,9 +113,8 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #3)_
 - **Issue:** PostgreSQL standard port is 5432, not 8085
 - **Status:** OPEN
 
-### C-012 — `docker-manager-agent` not started from agent-orchestrator start button
-- **Previous status:** Agent was not started. Updated 2026-04-29: health.sh was HEALTHY, agent needed ./start.sh
-- **Current status (2026-05-05):** Agent IS running on port 8889 ✅ — concern downgraded to monitoring
+### C-012 — `docker-manager-agent` agent monitoring
+- **Current status (2026-05-05 cycle #5):** Agent IS running on port 8889 ✅ — HTTP 200 on /health
 - **Status:** MONITORING — running; flag if it goes down again
 
 ---
@@ -108,5 +122,5 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #3)_
 ## ✅ RESOLVED
 
 ### C-015 — `ums-app` and `mypostgresql_db-container` were exited ✅ RESOLVED 2026-05-05
-- Both containers are now running (Up 55+ min each as of cycle #3)
+- Both containers are now running (Up 27 min / Up 4h as of cycle #5)
 - Exit codes 143/137 from previous cycle were clean/forced shutdowns, not crashes

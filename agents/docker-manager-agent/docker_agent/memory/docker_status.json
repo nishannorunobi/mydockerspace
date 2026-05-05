@@ -1,98 +1,98 @@
 {
-  "last_updated": "2026-05-05T15:55:17",
+  "last_updated": "2026-05-05T19:37:36",
   "total_containers": 2,
   "running": 2,
   "stopped": 0,
   "containers": [
     {
-      "id": "a00020c04220",
+      "id": "5d0425b43873",
       "name": "ums-app",
-      "status": "Up 2 hours",
+      "status": "Up About an hour",
       "image": "host_scripts-ums",
-      "running_for": "8 days ago",
-      "cpu": "0.25%",
-      "memory": "257.4MiB / 15.35GiB"
+      "running_for": "About an hour ago",
+      "cpu": "0.20%",
+      "memory": "271MiB / 15.35GiB"
     },
     {
       "id": "f9bb519172be",
       "name": "mypostgresql_db-container",
-      "status": "Up 2 hours",
+      "status": "Up 6 hours",
       "image": "mypostgresql_db-image:1.0",
       "running_for": "8 days ago",
-      "cpu": "0.16%",
-      "memory": "213.7MiB / 15.35GiB"
+      "cpu": "0.15%",
+      "memory": "127.7MiB / 15.35GiB"
     }
   ],
   "recent_events": [
     {
-      "timestamp": "2026-05-05T13:57:34",
-      "container_id": "a00020c04220",
+      "timestamp": "2026-05-05T18:16:46",
+      "container_id": "5d0425b43873",
       "container_name": "ums-app",
-      "event_type": "restarted",
-      "details": "a00020c04220"
+      "event_type": "detected",
+      "details": "Up 15 seconds"
     },
     {
-      "timestamp": "2026-05-05T13:57:34",
-      "container_id": "a00020c04220",
+      "timestamp": "2026-05-05T18:12:18",
+      "container_id": "ums-app",
       "container_name": "ums-app",
-      "event_type": "stopped",
-      "details": "was: 'Up About a minute'"
-    },
-    {
-      "timestamp": "2026-05-05T13:55:49",
-      "container_id": "mypostgresql_db-container",
-      "container_name": "mypostgresql_db-container",
-      "event_type": "manually_started",
+      "event_type": "manually_restarted",
       "details": "via API"
     },
     {
-      "timestamp": "2026-05-05T13:55:18",
+      "timestamp": "2026-05-05T17:40:47",
       "container_id": "a00020c04220",
       "container_name": "ums-app",
-      "event_type": "restarted",
-      "details": "a00020c04220"
+      "event_type": "agent_autostart",
+      "details": "container came up"
     },
     {
-      "timestamp": "2026-05-05T13:55:18",
-      "container_id": "a00020c04220",
-      "container_name": "ums-app",
-      "event_type": "stopped",
-      "details": "was: 'Up About a minute'"
-    },
-    {
-      "timestamp": "2026-05-05T13:53:07",
+      "timestamp": "2026-05-05T17:40:40",
       "container_id": "ums-app",
       "container_name": "ums-app",
       "event_type": "manually_started",
       "details": "via API"
     },
     {
-      "timestamp": "2026-05-05T13:52:35",
-      "container_id": "mypostgresql_db-container",
-      "container_name": "mypostgresql_db-container",
+      "timestamp": "2026-05-05T17:40:34",
+      "container_id": "ums-app",
+      "container_name": "ums-app",
       "event_type": "manually_stopped",
       "details": "via API"
     },
     {
-      "timestamp": "2026-05-05T13:52:16",
-      "container_id": "f9bb519172be",
-      "container_name": "mypostgresql_db-container",
+      "timestamp": "2026-05-05T17:40:27",
+      "container_id": "a00020c04220",
+      "container_name": "ums-app",
       "event_type": "restarted",
-      "details": "f9bb519172be"
+      "details": "a00020c04220"
     },
     {
-      "timestamp": "2026-05-05T13:52:15",
-      "container_id": "f9bb519172be",
-      "container_name": "mypostgresql_db-container",
+      "timestamp": "2026-05-05T17:40:27",
+      "container_id": "a00020c04220",
+      "container_name": "ums-app",
       "event_type": "stopped",
-      "details": "was: 'Up 9 seconds'"
+      "details": "was: 'Up 4 hours'"
     },
     {
-      "timestamp": "2026-05-05T13:52:14",
-      "container_id": "mypostgresql_db-container",
-      "container_name": "mypostgresql_db-container",
+      "timestamp": "2026-05-05T17:40:25",
+      "container_id": "ums-app",
+      "container_name": "ums-app",
       "event_type": "manually_stopped",
       "details": "via API"
+    },
+    {
+      "timestamp": "2026-05-05T16:24:16",
+      "container_id": "mypostgresql_db-container",
+      "container_name": "mypostgresql_db-container",
+      "event_type": "agent_event:task_complete",
+      "details": "{\"task\": \"install pgweb\", \"summary\": \"pgweb running on port 8085\"}"
+    },
+    {
+      "timestamp": "2026-05-05T16:23:17",
+      "container_id": "mypostgresql_db-container",
+      "container_name": "mypostgresql_db-container",
+      "event_type": "agent_event:user_intervention_required",
+      "details": "{\"message\": \"Cannot install package: requires sudo password. Please run: sudo apt-get install -y socat\", \"details\": {\"command\": \"apt-get install socat\", \"error\": \"Permission denied\"}}"
     }
   ]
 }

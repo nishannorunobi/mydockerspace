@@ -93,6 +93,108 @@ class Dashboard {
     s.on('workspace_change', data => {
       this._addChange(data);
     });
+
+    s.on('agent_event', data => {
+      this._handleAgentEvent(data);
+    });
+  }
+
+  // ── Agent telemetry events ────────────────────────────────────────────────
+
+  _handleAgentEvent(data) {
+    const event     = data.event || '';
+    const source    = data.source || 'agent';
+    const container = data.container || '';
+    const payload   = data.data || {};
+
+    if (event === 'user_intervention_required') {
+      this._showInterventionSplash(payload.message || 'User action required', source, payload);
+      return;
+    }
+
+
+    // Map event → toast style
+    const styleMap = {
+      service_started:      { cls: 'info',    icon: '⚡', label: 'Service started' },
+      service_stopped:      { cls: 'warning', icon: '⏹', label: 'Service stopped' },
+      install_error:        { cls: 'error',   icon: '✗',  label: 'Install error' },
+      auto_resolve_complete:{ cls: 'info',    icon: '✓',  label: 'Auto-fixed' },
+      auto_resolve_failed:  { cls: 'warning', icon: '⚠',  label: 'Auto-fix failed' },
+      task_complete:        { cls: 'info',    icon: '✓',  label: 'Task complete' },
+      status_update:        { cls: 'info',    icon: 'ℹ',  label: 'Status' },
+    };
+    const style = styleMap[event] || { cls: 'info', icon: 'ℹ', label: event };
+    const detail = payload.summary || payload.label || payload.service || payload.error || '';
+    const msg = detail ? `${style.label}: ${detail}` : style.label;
+    this._showToast(msg, style.cls, source || container);
+  }
+
+  _showToast(message, cls, origin) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `toast toast-${cls}`;
+    const ts = new Date().toLocaleTimeString();
+    el.innerHTML = `
+      <span class="toast-origin">${esc(origin)}</span>
+      <span class="toast-msg">${esc(message)}</span>
+      <span class="toast-time">${ts}</span>
+      <button class="toast-close" onclick="this.closest('.toast').remove()">✕</button>`;
+    container.appendChild(el);
+    // auto-dismiss after 6s
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 6000);
+  }
+
+  async _showInterventionSplash(message, source, details) {
+    // read bell_rings from docker-manager config (live, no restart needed)
+    let n = 5;
+    try {
+      const r = await fetch('http://localhost:8889/api/config');
+      if (r.ok) n = (await r.json()).bell_rings || 5;
+    } catch {}
+    this._beepN(n);
+    // splash screen
+    let splash = document.getElementById('intervention-splash');
+    if (!splash) {
+      splash = document.createElement('div');
+      splash.id = 'intervention-splash';
+      document.body.appendChild(splash);
+    }
+    const ts = new Date().toLocaleTimeString();
+    const detailText = details.details
+      ? `<pre class="intervention-detail">${esc(JSON.stringify(details.details, null, 2))}</pre>`
+      : '';
+    splash.innerHTML = `
+      <div class="intervention-box">
+        <div class="intervention-icon">⚠</div>
+        <div class="intervention-source">${esc(source)}</div>
+        <div class="intervention-title">User Action Required</div>
+        <div class="intervention-msg">${esc(message)}</div>
+        ${detailText}
+        <div class="intervention-time">${ts}</div>
+        <button class="intervention-ack" onclick="document.getElementById('intervention-splash').remove();window._dash.sound.stop()">
+          Acknowledge
+        </button>
+      </div>`;
+    splash.classList.add('active');
+  }
+
+  _beepN(n = 5) {
+    this.sound.stop();
+    const ctx = this.sound._ctx();
+    for (let i = 0; i < n; i++) {
+      const t = ctx.currentTime + i * 0.4;
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.5, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.25);
+    }
   }
 
   _setMonitorBadge(on) {
@@ -249,6 +351,8 @@ class Dashboard {
     $('services-view')?.classList.add('hidden');
     document.querySelectorAll('.vbtn').forEach(b => b.classList.toggle('active', b.dataset.view === 'grid'));
     this._selected = null;
+    const pulse = $('ws-pulse'); if (pulse) pulse.style.display = 'none';
+    if (this._pulseTimer) { clearInterval(this._pulseTimer); this._pulseTimer = null; }
     this._renderGrid();
     this._updateSidebar();
     this._disconnectChat();
@@ -281,6 +385,14 @@ class Dashboard {
     const tabDocs = $('tab-apidocs');
     if (tabDocs) tabDocs.style.display = isHttp ? '' : 'none';
 
+    const isWorkspace = agentId === 'workspace';
+    const tabToday = $('tab-today');
+    if (tabToday)   tabToday.style.display   = isWorkspace ? '' : 'none';
+    const tabGit  = $('tab-git');
+    if (tabGit)     tabGit.style.display     = isWorkspace ? '' : 'none';
+    const tabCon  = $('tab-console');
+    if (tabCon)     tabCon.style.display     = isWorkspace ? '' : 'none';
+
     // Clear iframe when switching agents
     const frame = document.getElementById('apidocs-frame');
     if (frame) frame.src = '';
@@ -299,7 +411,16 @@ class Dashboard {
       }
     }
 
-    this.switchTab('chat');
+    if (agentId === 'workspace') {
+      this.switchTab('today');
+      this._loadToday();
+      this._loadPulse();
+      if (this._pulseTimer) clearInterval(this._pulseTimer);
+      this._pulseTimer = setInterval(() => this._loadPulse(), 30000);
+    } else {
+      this.switchTab('chat');
+      if (this._pulseTimer) { clearInterval(this._pulseTimer); this._pulseTimer = null; }
+    }
     this._resetChat();
     this._connectChat(agentId);
     this._connectLogs(agentId);
@@ -322,6 +443,9 @@ class Dashboard {
     document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === `pane-${name}`));
     if (name === 'containers' && this._selected) this._loadContainers(this._selected);
     if (name === 'agents'    && this._selected) this._loadSubAgents(this._selected);
+    if (name === 'today'     && this._selected) this._loadToday();
+    if (name === 'git')  this._gitRefresh();
+    if (name === 'console') this._consoleInit();
     if (name === 'apidocs') {
       const frame = document.getElementById('apidocs-frame');
       if (frame && this._currentDocsUrl && !frame.src.endsWith('/docs')) {
@@ -497,6 +621,357 @@ class Dashboard {
     if (this._logEs) { this._logEs.close(); this._logEs = null; }
   }
 
+  // ── Git panel ─────────────────────────────────────────────────────────────
+
+  async _gitRefresh() {
+    const fileList = $('git-file-list');
+    const logEl    = $('git-log');
+    const out      = $('git-output');
+    if (!fileList) return;
+    fileList.innerHTML = '<div class="git-loading">Loading…</div>';
+    try {
+      const res  = await fetch('/api/git/status').catch(() => null);
+      if (!res || !res.ok) { fileList.innerHTML = '<div class="git-loading">Git unavailable</div>'; return; }
+      const d    = await res.json();
+
+      // Branch badge
+      const badge = $('git-branch-badge');
+      if (badge) badge.textContent = '⎇ ' + (d.branch || '?');
+
+      // File list
+      this._gitFiles = d.files || [];
+      fileList.innerHTML = this._gitFiles.length
+        ? this._gitFiles.map((f, i) => `
+            <div class="git-file-row" data-idx="${i}">
+              <input type="checkbox" class="git-file-cb" id="gf${i}" ${f.state === 'staged' ? 'checked' : ''}>
+              <span class="git-file-st git-st-${esc(f.state)}">${esc(f.status)}</span>
+              <label class="git-file-path" for="gf${i}">${esc(f.path)}</label>
+            </div>`).join('')
+        : '<div class="git-clean">Working tree clean ✓</div>';
+
+      // Stat breakdown bar
+      const statBar   = $('git-stat-bar');
+      if (statBar) {
+        const staged    = this._gitFiles.filter(f => f.state === 'staged').length;
+        const modified  = this._gitFiles.filter(f => f.state === 'modified').length;
+        const untracked = this._gitFiles.filter(f => f.state === 'untracked').length;
+        const total     = staged + modified + untracked;
+        if (total > 0) {
+          const seg = (n, clr) => n ? `<div class="git-stat-seg" style="width:${(n/total*100).toFixed(1)}%;background:${clr}" title="${n}"></div>` : '';
+          const lbl = (n, clr, t) => n ? `<span style="color:${clr}">■ ${n} ${t}</span>` : '';
+          statBar.style.display = '';
+          statBar.innerHTML = `
+            <div class="git-stat-segs">
+              ${seg(staged,'#3fb950')}${seg(modified,'#58a6ff')}${seg(untracked,'#d29922')}
+            </div>
+            <div class="git-stat-legend">
+              ${lbl(staged,'#3fb950','staged')}${lbl(modified,'#58a6ff','modified')}${lbl(untracked,'#d29922','untracked')}
+            </div>`;
+        } else {
+          statBar.style.display = 'none';
+        }
+      }
+
+      // Log
+      if (logEl) {
+        logEl.innerHTML = d.log
+          ? d.log.split('\n').map(l => `<div class="git-log-line">${esc(l)}</div>`).join('')
+          : '<div class="git-loading">No commits yet</div>';
+      }
+      if (out) out.textContent = '';
+    } catch (e) {
+      if (fileList) fileList.innerHTML = `<div class="git-loading">Error: ${esc(String(e))}</div>`;
+    }
+  }
+
+  _gitCheckedFiles() {
+    const checked = [];
+    document.querySelectorAll('.git-file-cb:checked').forEach((cb, _) => {
+      const idx = parseInt(cb.closest('.git-file-row')?.dataset.idx ?? '-1');
+      if (idx >= 0 && this._gitFiles?.[idx]) checked.push(this._gitFiles[idx].path);
+    });
+    return checked;
+  }
+
+  async _gitPost(endpoint, body = {}) {
+    // Duplicate guard: ignore same git action within 2 seconds
+    const key = endpoint + JSON.stringify(body);
+    const now = Date.now();
+    if (key === this._lastGitKey && now - (this._lastGitTs||0) < 2000) return;
+    this._lastGitKey = key;
+    this._lastGitTs  = now;
+
+    const out = $('git-output');
+    if (out) { out.className = 'git-output'; out.textContent = '…'; }
+    try {
+      const res  = await fetch(endpoint, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const d    = await res.json();
+      if (out) {
+        out.className  = 'git-output ' + (d.ok ? 'ok' : 'err');
+        out.textContent = d.output || (d.ok ? 'Done' : 'Failed');
+      }
+      if (d.ok) this._gitRefresh();
+      return d;
+    } catch (e) {
+      if (out) { out.className = 'git-output err'; out.textContent = String(e); }
+    }
+  }
+
+  async _gitAddAll()   { await this._gitPost('/api/git/add-all'); }
+  async _gitPush()     { await this._gitPost('/api/git/push', {}); }
+  async _gitPull()     { await this._gitPost('/api/git/pull'); }
+
+  async _gitCommit() {
+    const msg = $('git-commit-msg')?.value?.trim();
+    if (!msg) { const o = $('git-output'); if (o) { o.className='git-output err'; o.textContent='Enter a commit message'; } return; }
+    const files = this._gitCheckedFiles();
+    const d = await this._gitPost('/api/git/commit', { message: msg, files });
+    if (d?.ok && $('git-commit-msg')) $('git-commit-msg').value = '';
+  }
+
+  // ── Console panel ──────────────────────────────────────────────────────────
+
+  async _consoleInit() {
+    const sel = $('console-cwd');
+    if (!sel || sel.dataset.loaded) return;
+    sel.dataset.loaded = '1';
+    try {
+      const res = await fetch('/api/console/cwd-list').catch(() => null);
+      if (!res) return;
+      const d   = await res.json();
+      sel.innerHTML = ['', ...(d.dirs || [])].map(dir =>
+        `<option value="${esc(dir)}">${dir || '/ workspace root'}</option>`
+      ).join('');
+    } catch (_) {}
+    // Enter key
+    const inp = $('console-input');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') this._consoleRun(); });
+  }
+
+  async _consoleRun() {
+    const inp = $('console-input');
+    const sel = $('console-cwd');
+    const out = $('console-output');
+    if (!inp || !out) return;
+    const cmd = inp.value.trim();
+    if (!cmd) return;
+
+    const cwd = sel?.value || '';
+
+    // Duplicate guard: ignore identical command+cwd within 3 seconds
+    const dedupeKey = `${cwd}:${cmd}`;
+    const now = Date.now();
+    if (dedupeKey === this._lastConsoleKey && now - (this._lastConsoleTs||0) < 3000) return;
+    this._lastConsoleKey = dedupeKey;
+    this._lastConsoleTs  = now;
+
+    // Echo the command
+    const header = document.createElement('div');
+    header.className = 'con-cmd';
+    header.textContent = `${cwd ? cwd + '/' : ''}$ ${cmd}`;
+    out.appendChild(header);
+
+    inp.value    = '';
+    inp.disabled = true;
+
+    try {
+      const res  = await fetch('/api/console/exec', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ command: cmd, cwd })
+      });
+      const d    = await res.json();
+      const body = document.createElement('pre');
+      body.className = 'con-out ' + (d.ok ? 'ok' : 'err');
+      body.textContent = d.output || (d.ok ? '(no output)' : 'Command failed');
+      if (!d.ok) body.textContent += `\n[exit ${d.exit_code}]`;
+      out.appendChild(body);
+    } catch (e) {
+      const err = document.createElement('pre');
+      err.className   = 'con-out err';
+      err.textContent = String(e);
+      out.appendChild(err);
+    }
+
+    inp.disabled = false;
+    inp.focus();
+    out.scrollTop = out.scrollHeight;
+  }
+
+  _consoleClear() {
+    const out = $('console-output');
+    if (out) out.innerHTML = '';
+  }
+
+  // ── Workspace pulse bar ───────────────────────────────────────────────────
+
+  async _loadPulse() {
+    const bar   = $('ws-pulse');
+    const pills = $('ws-pulse-pills');
+    if (!bar || !pills) return;
+    try {
+      const res  = await fetch('/api/agents/workspace/memory/today.json').catch(() => null);
+      if (!res || !res.ok) return;
+      const data    = await res.json();
+      const content = JSON.parse(data.content || '{}');
+      const sugs    = content.suggestions || [];
+
+      if (sugs.length === 0) {
+        bar.style.display = '';
+        pills.innerHTML   = '<span class="ws-pill info">All clear ✓</span>';
+        bar.className     = 'ws-pulse ws-pulse-clear';
+        return;
+      }
+
+      const hasEmergency = sugs.some(s => s.level === 'emergency');
+      const hasWarning   = sugs.some(s => s.level === 'warning');
+      bar.className      = `ws-pulse ${hasEmergency ? 'ws-pulse-emergency' : hasWarning ? 'ws-pulse-warning' : 'ws-pulse-info'}`;
+      bar.style.display  = '';
+
+      pills.innerHTML = sugs.slice(0, 6).map(s =>
+        `<span class="ws-pill ${esc(s.level)}" title="${esc(s.source)}">${esc(s.message)}</span>`
+      ).join('');
+    } catch (e) { /* silent */ }
+  }
+
+  _refreshPulse() { this._loadPulse(); this._loadToday(); }
+
+  // ── Today panel (workspace agent) ────────────────────────────────────────
+
+  async _loadToday() {
+    const wrap = $('today-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="today-loading">Loading…</div>';
+    try {
+      const res  = await fetch('/api/agents/workspace/memory/today.json').catch(() => null);
+      if (!res || !res.ok) { wrap.innerHTML = '<div class="today-loading">today.json not ready yet — scanner runs every 30s.</div>'; return; }
+      const data = await res.json();
+      const content = JSON.parse(data.content || '{}');
+      wrap.innerHTML = this._renderToday(content);
+    } catch (e) {
+      wrap.innerHTML = `<div class="today-loading">Error: ${esc(String(e))}</div>`;
+    }
+  }
+
+  _renderToday(d) {
+    const ts     = d.generated_at ? `<span class="today-ts">Updated ${esc(d.generated_at)}</span>` : '';
+    const stats  = d.scan_stats   ? `${d.scan_stats.files} files · ${d.scan_stats.dirs} dirs · ${d.file_counts?.history_events||d.scan_stats.history_events||0} changes logged` : '';
+
+    // Todos
+    const todos  = (d.todos || []);
+    const prioIcon = p => p === 'urgent' ? '🔴' : p === 'high' ? '🟠' : p === 'normal' ? '🟡' : '⚪';
+    const todoRows = todos.length
+      ? todos.map(t => `<div class="today-todo-item">
+          <span class="today-todo-prio">${prioIcon(t.priority)}</span>
+          <span class="today-todo-text">${esc(t.text)}</span>
+          <span class="today-todo-meta">#${t.id} · ${esc(t.source||'manual')} · ${esc((t.created_at||'').slice(0,10))}</span>
+        </div>`).join('')
+      : '<div class="today-empty">No open tasks — you\'re clear ✓</div>';
+
+    // Todo priority breakdown bar
+    const prioCounts = {urgent:0, high:0, normal:0, low:0};
+    todos.forEach(t => { const k = t.priority||'low'; prioCounts[k] = (prioCounts[k]||0)+1; });
+    const prioTotal = todos.length || 1;
+    const prioSeg = (n, clr) => n ? `<div class="today-prio-seg" style="width:${(n/prioTotal*100).toFixed(1)}%;background:${clr}"></div>` : '';
+    const prioLbl = (n, clr, t) => n ? `<span style="color:${clr}">● ${n} ${t}</span>` : '';
+    const prioBar = todos.length ? `
+      <div class="today-prio-bar">
+        ${prioSeg(prioCounts.urgent,'#f85149')}${prioSeg(prioCounts.high,'#d29922')}${prioSeg(prioCounts.normal,'#58a6ff')}${prioSeg(prioCounts.low,'#3fb950')}
+      </div>
+      <div class="today-prio-legend">
+        ${prioLbl(prioCounts.urgent,'#f85149','urgent')}${prioLbl(prioCounts.high,'#d29922','high')}${prioLbl(prioCounts.normal,'#58a6ff','normal')}${prioLbl(prioCounts.low,'#3fb950','low')}
+      </div>` : '';
+
+    // Activity sparkline — group all changes by hour
+    const allChanges  = (d.recent_changes || []);
+    const hrBuckets   = new Array(24).fill(0);
+    allChanges.forEach(c => {
+      const h = parseInt((c.timestamp||'').slice(11,13)||'0', 10);
+      if (!isNaN(h) && h >= 0 && h < 24) hrBuckets[h]++;
+    });
+    const maxH    = Math.max(...hrBuckets, 1);
+    const svgW    = 280, svgH = 24, bw = svgW / 24 - 1;
+    const sparkBars = hrBuckets.map((v, i) => {
+      const bh   = v > 0 ? Math.max((v / maxH) * (svgH - 2), 3) : 1;
+      const x    = (i * svgW / 24).toFixed(1);
+      const y    = (svgH - bh).toFixed(1);
+      const fill = v > 0 ? '#58a6ff' : '#21262d';
+      return `<rect x="${x}" y="${y}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${fill}" rx="1"/>`;
+    }).join('');
+    const nowH    = new Date().getHours();
+    const sparkline = `
+      <div class="today-spark-wrap">
+        <div class="today-spark-lbl"><span>File activity by hour (0h–23h)</span><span>now: ${nowH}h · ${allChanges.length} events</span></div>
+        <svg class="today-spark" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${sparkBars}</svg>
+      </div>`;
+
+    // Recent changes (list, last 10)
+    const changes = allChanges.slice(0, 10);
+    const changeRows = changes.length
+      ? changes.map(c => `<div class="today-change-item">
+          <span class="today-change-ev ${esc(c.event)}">${esc(c.event)}</span>
+          <span class="today-change-path">${esc(c.path)}</span>
+          <span class="today-change-ts">${esc((c.timestamp||'').slice(11,16))}</span>
+        </div>`).join('')
+      : '<div class="today-empty">No recent changes</div>';
+
+    // Templates / projects
+    const templates = (d.templates || []);
+    const projRows  = templates.length
+      ? templates.map(t => `<div class="today-proj-item">
+          <span class="today-proj-type">${esc(t.project_type)}</span>
+          <span class="today-proj-path">${esc(t.root_path)}</span>
+        </div>`).join('')
+      : '<div class="today-empty">No templates detected</div>';
+
+    // Knowledge
+    const knowledge = (d.recent_knowledge || []).slice(0, 5);
+    const knowRows  = knowledge.length
+      ? knowledge.map(k => `<div class="today-know-item">
+          <span class="today-know-cat">${esc(k.category)}</span>
+          <span class="today-know-title">${esc(k.title)}</span>
+        </div>`).join('')
+      : '<div class="today-empty">No knowledge entries yet — ask the agent to save observations</div>';
+
+    // Prompt history
+    const prompts   = (d.prompt_history || []);
+    const promptRows = prompts.length
+      ? prompts.map(p => `<div class="today-prompt-item">
+          <span class="today-prompt-ts">${esc((p.timestamp||'').slice(0,16).replace('T',' '))}</span>
+          <span class="today-prompt-text">${esc((p.prompt||'').slice(0,120))}</span>
+        </div>`).join('')
+      : '<div class="today-empty">No prompt history yet</div>';
+
+    return `
+      <div class="today-header">${ts}<span class="today-stats">${stats}</span></div>
+      <div class="today-grid">
+        <div class="today-section">
+          <div class="today-section-title">📋 Open Tasks (${todos.length})</div>
+          ${prioBar}
+          <div class="today-section-body">${todoRows}</div>
+        </div>
+        <div class="today-section">
+          <div class="today-section-title">📁 Active Projects (${templates.length})</div>
+          <div class="today-section-body today-projs">${projRows}</div>
+        </div>
+        <div class="today-section today-wide">
+          <div class="today-section-title">🕐 Recent Changes</div>
+          ${sparkline}
+          <div class="today-section-body">${changeRows}</div>
+        </div>
+        <div class="today-section">
+          <div class="today-section-title">🧠 Knowledge Base</div>
+          <div class="today-section-body">${knowRows}</div>
+        </div>
+        <div class="today-section">
+          <div class="today-section-title">💬 Prompt History</div>
+          <div class="today-section-body">${promptRows}</div>
+        </div>
+      </div>`;
+  }
+
   // ── Memory ────────────────────────────────────────────────────────────────
 
   async _loadMemory(agentId) {
@@ -660,14 +1135,19 @@ class Dashboard {
   }
 
   _containerCard(agentId, c) {
-    const isUp  = c.status?.startsWith('Up');
-    const cls   = isUp ? 'running' : 'stopped';
-    const cpu   = c.cpu    || '—';
-    const mem   = c.memory || '—';
+    const isUp   = c.status?.startsWith('Up');
+    const cls    = isUp ? 'running' : 'stopped';
+    const cpu    = c.cpu    || '—';
+    const mem    = c.memory || '—';
     const memPct = c.mem_pct || '';
     const memVal = memPct || (mem.split('/')[0]?.trim()) || '—';
-    const name  = esc(c.name);
-    const n     = c.name;
+    const name   = esc(c.name);
+    const n      = c.name;
+
+    const parsePct = s => { const m = String(s).match(/(\d+\.?\d*)/); return m ? Math.min(100, parseFloat(m[1])) : 0; };
+    const barClr   = v  => v > 80 ? '#f85149' : v > 50 ? '#d29922' : '#3fb950';
+    const cpuPct   = parsePct(cpu);
+    const memPctN  = parsePct(memVal);
 
     return `<div class="c-card ${cls}" id="cc-${name}">
       <div class="c-hdr">
@@ -683,14 +1163,24 @@ class Dashboard {
         ${c.running_for ? `<div class="c-row"><span class="c-lbl">Uptime</span><span class="c-val">${esc(c.running_for)}</span></div>` : ''}
       </div>
       ${isUp ? `<div class="c-stats">
-        <div class="c-chip"><div class="c-chip-val">${esc(cpu)}</div><div class="c-chip-lbl">CPU</div></div>
-        <div class="c-chip"><div class="c-chip-val">${esc(memVal)}</div><div class="c-chip-lbl">Mem%</div></div>
+        <div class="c-chip">
+          <div class="c-chip-val">${esc(cpu)}</div>
+          <div class="c-bar-wrap"><div class="c-bar-fill" style="width:${cpuPct.toFixed(1)}%;background:${barClr(cpuPct)}"></div></div>
+          <div class="c-chip-lbl">CPU</div>
+        </div>
+        <div class="c-chip">
+          <div class="c-chip-val">${esc(memVal)}</div>
+          <div class="c-bar-wrap"><div class="c-bar-fill" style="width:${memPctN.toFixed(1)}%;background:${barClr(memPctN)}"></div></div>
+          <div class="c-chip-lbl">Mem%</div>
+        </div>
         <div class="c-chip"><div class="c-chip-val" style="font-size:10px">${esc(mem.split('/')[0]?.trim()||'—')}</div><div class="c-chip-lbl">Mem Used</div></div>
       </div>` : ''}
       <div class="c-actions">
-        <button class="c-btn start"   ${isUp  ? 'disabled' : ''} onclick="window._dash._containerAction('${agentId}','${esc(n)}','start')">Start</button>
-        <button class="c-btn stop"    ${!isUp ? 'disabled' : ''} onclick="window._dash._containerAction('${agentId}','${esc(n)}','stop')">Stop</button>
-        <button class="c-btn restart"                             onclick="window._dash._containerAction('${agentId}','${esc(n)}','restart')">Restart</button>
+        <button class="c-btn start"         ${isUp  ? 'disabled' : ''} onclick="window._dash._containerAction('${agentId}','${esc(n)}','start')">Start</button>
+        <button class="c-btn stop"          ${!isUp ? 'disabled' : ''} onclick="window._dash._containerAction('${agentId}','${esc(n)}','stop')">Stop</button>
+        <button class="c-btn restart"                                   onclick="window._dash._containerAction('${agentId}','${esc(n)}','restart')">Restart</button>
+        <button class="c-btn clean-restart" title="Recreate from compose — applies volume mounts, image rebuilds, and config changes"
+                onclick="window._dash._containerAction('${agentId}','${esc(n)}','clean-restart')">↺ Rebuild</button>
       </div>
     </div>`;
   }

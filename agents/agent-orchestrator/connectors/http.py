@@ -29,6 +29,10 @@ class HttpConnector(AgentConnector):
         try:
             urllib.request.urlopen(self._health_url, timeout=3)
             return True
+        except urllib.error.HTTPError:
+            # Proxy responded with an HTTP error (e.g. 503 — container agent down).
+            # The proxy itself is reachable, so the chat can open and show the error inline.
+            return True
         except Exception:
             return False
 

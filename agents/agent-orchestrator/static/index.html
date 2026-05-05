@@ -21,6 +21,9 @@
 <!-- ── Alert banner container (injected by AlertSystem) ── -->
 <div id="alert-container"></div>
 
+<!-- ── Toast notifications (agent telemetry events) ── -->
+<div id="toast-container"></div>
+
 <!-- ── Body ── -->
 <div class="body">
 
@@ -85,14 +88,24 @@
         </div>
       </div>
 
+      <!-- Workspace pulse bar — only visible when workspace agent is selected -->
+      <div class="ws-pulse" id="ws-pulse" style="display:none">
+        <span class="ws-pulse-label">⚡ Workspace</span>
+        <div class="ws-pulse-pills" id="ws-pulse-pills"></div>
+        <button class="ws-pulse-refresh" onclick="window._dash._refreshPulse()" title="Refresh">↺</button>
+      </div>
+
       <!-- Tabs -->
       <div class="tabs">
         <div class="tab active" data-tab="chat"       onclick="window._dash.switchTab('chat')">Chat</div>
+        <div class="tab"        data-tab="today"      onclick="window._dash.switchTab('today')"      id="tab-today"      style="display:none">Today</div>
+        <div class="tab"        data-tab="git"        onclick="window._dash.switchTab('git')"        id="tab-git"        style="display:none">Git</div>
+        <div class="tab"        data-tab="console"    onclick="window._dash.switchTab('console')"    id="tab-console"    style="display:none">Console</div>
         <div class="tab"        data-tab="containers" onclick="window._dash.switchTab('containers')" id="tab-containers" style="display:none">Containers</div>
         <div class="tab"        data-tab="logs"       onclick="window._dash.switchTab('logs')">Logs</div>
         <div class="tab"        data-tab="mem"        onclick="window._dash.switchTab('mem')">Memory</div>
-        <div class="tab"        data-tab="agents"     onclick="window._dash.switchTab('agents')"   id="tab-agents"  style="display:none">Agents</div>
-        <div class="tab"        data-tab="apidocs"    onclick="window._dash.switchTab('apidocs')"  id="tab-apidocs" style="display:none">API Docs</div>
+        <div class="tab"        data-tab="agents"     onclick="window._dash.switchTab('agents')"     id="tab-agents"     style="display:none">Agents</div>
+        <div class="tab"        data-tab="apidocs"    onclick="window._dash.switchTab('apidocs')"    id="tab-apidocs"    style="display:none">API Docs</div>
       </div>
 
       <!-- Panes -->
@@ -115,6 +128,58 @@
           </div>
           <div class="containers-grid" id="containers-grid">
             <div class="containers-empty">Select an agent with container management to view containers.</div>
+          </div>
+        </div>
+
+        <!-- Git pane -->
+        <div class="pane" id="pane-git">
+          <div class="git-wrap">
+            <div class="git-top">
+              <div class="git-status-col">
+                <div class="git-section-title">
+                  <span id="git-branch-badge" class="git-branch">—</span>
+                  <span class="git-section-label">Changed Files</span>
+                  <div class="git-top-actions">
+                    <button class="git-btn" onclick="window._dash._gitRefresh()">↺ Refresh</button>
+                    <button class="git-btn accent" onclick="window._dash._gitAddAll()">+ Stage All</button>
+                    <button class="git-btn warning" onclick="window._dash._gitPull()">⬇ Pull</button>
+                    <button class="git-btn success" onclick="window._dash._gitPush()" id="git-push-btn">⬆ Push</button>
+                  </div>
+                </div>
+                <div id="git-stat-bar" class="git-stat-bar-wrap" style="display:none"></div>
+                <div class="git-file-list" id="git-file-list"></div>
+                <div class="git-commit-row">
+                  <input id="git-commit-msg" class="git-msg-input" type="text" placeholder="Commit message…">
+                  <button class="git-btn success" onclick="window._dash._gitCommit()">✓ Commit</button>
+                </div>
+                <div class="git-output" id="git-output"></div>
+              </div>
+              <div class="git-log-col">
+                <div class="git-section-title"><span class="git-section-label">Recent Commits</span></div>
+                <div class="git-log" id="git-log"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Console pane -->
+        <div class="pane" id="pane-console">
+          <div class="console-wrap">
+            <div class="console-toolbar">
+              <select id="console-cwd" class="console-cwd-sel" title="Working directory"></select>
+              <span class="console-cwd-label">$</span>
+              <input id="console-input" class="console-input" type="text" placeholder="Enter command…" autocomplete="off" spellcheck="false">
+              <button class="git-btn accent" onclick="window._dash._consoleRun()">Run</button>
+              <button class="git-btn" onclick="window._dash._consoleClear()">Clear</button>
+            </div>
+            <div class="console-output" id="console-output"></div>
+          </div>
+        </div>
+
+        <!-- Today pane (workspace agent only) -->
+        <div class="pane" id="pane-today">
+          <div class="today-wrap" id="today-wrap">
+            <div class="today-loading">Loading workspace intelligence…</div>
           </div>
         </div>
 

@@ -66,7 +66,11 @@
       "Bash(curl -s -X POST http://localhost:8889/api/db-agent/api/tasks -H 'Content-Type: application/json' -d '{\"task\": \"check if PostgreSQL is running and report the version\"}')",
       "Bash(curl -sv -X POST http://localhost:8889/api/db-agent/api/tasks -H 'Content-Type: application/json' -d '{\"task\": \"check if PostgreSQL is running\"}')",
       "Bash(curl -s http://localhost:8888/api/config/anthropic-key)",
-      "Bash(curl -s -X POST http://localhost:8888/api/config/anthropic-key -H 'Content-Type: application/json' -d '{\"key\": \"sk-ant-TESTKEY123456789012345\"}')"
+      "Bash(curl -s -X POST http://localhost:8888/api/config/anthropic-key -H 'Content-Type: application/json' -d '{\"key\": \"sk-ant-TESTKEY123456789012345\"}')",
+      "Bash(curl -s http://localhost:8889/api/config)",
+      "Bash(chmod +x /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/start_admin_ui.sh /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/stop_admin_ui.sh /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/health_admin_ui.sh)",
+      "Bash(chmod +x /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/build_env_ui.sh)",
+      "Bash(curl -s \"http://localhost:8888/api/console/exec\" -X POST -H \"Content-Type: application/json\" -d '{\"command\":\"echo hello && pwd\"}')"
     ]
   }
 }

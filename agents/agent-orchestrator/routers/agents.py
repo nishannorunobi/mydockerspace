@@ -123,7 +123,8 @@ async def list_memory(agent_id: str):
     mem = Path(spec.memory_dir)
     if not mem.exists():
         return {"files": []}
-    return {"files": [f.name for f in sorted(mem.iterdir()) if f.is_file()]}
+    TEXT_EXTS = {'.md', '.txt', '.json', '.log', '.yaml', '.yml', '.conf', '.ini', '.toml', '.csv'}
+    return {"files": [f.name for f in sorted(mem.iterdir()) if f.is_file() and f.suffix in TEXT_EXTS]}
 
 
 @router.get("/{agent_id}/memory/{filename}")
@@ -134,7 +135,10 @@ async def read_memory(agent_id: str, filename: str):
     path = Path(spec.memory_dir) / filename
     if not path.exists():
         return {"error": "not found"}
-    return {"filename": filename, "content": path.read_text()}
+    try:
+        return {"filename": filename, "content": path.read_text(encoding="utf-8")}
+    except (UnicodeDecodeError, ValueError):
+        return {"filename": filename, "content": f"[binary file — {path.stat().st_size} bytes, not displayable as text]"}
 
 
 # ── Container proxy (for HTTP agents that manage containers) ──────────────────
