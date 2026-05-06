@@ -635,6 +635,24 @@ class Dashboard {
 
   // ── Git panel ─────────────────────────────────────────────────────────────
 
+  async _completeTodo(id) {
+    const row = document.getElementById(`todo-row-${id}`);
+    if (row) row.style.opacity = '0.4';
+    try {
+      const res = await fetch(`/api/agents/workspace/todos/${id}/complete`, { method: 'POST' });
+      const d   = await res.json();
+      if (d.ok) {
+        if (row) row.remove();
+        // refresh today panel counts
+        this._loadToday();
+      } else {
+        if (row) row.style.opacity = '1';
+      }
+    } catch (_) {
+      if (row) row.style.opacity = '1';
+    }
+  }
+
   _gitJumpTo(repoPath) {
     // Switch to git tab and select this repo
     this.switchTab('git');
@@ -690,12 +708,20 @@ class Dashboard {
       // File list
       this._gitFiles = d.files || [];
       fileList.innerHTML = this._gitFiles.length
-        ? this._gitFiles.map((f, i) => `
-            <div class="git-file-row" data-idx="${i}">
+        ? this._gitFiles.map((f, i) => {
+            const big  = (f.size_bytes || 0) >= 1_048_576;
+            const warn = (f.size_bytes || 0) >= 10_485_760; // 10 MB warning
+            const sizeHtml = f.size
+              ? `<span class="git-file-size${warn ? ' git-file-size-warn' : big ? ' git-file-size-big' : ''}">${esc(f.size)}</span>`
+              : '';
+            return `
+            <div class="git-file-row${warn ? ' git-file-row-warn' : ''}" data-idx="${i}">
               <input type="checkbox" class="git-file-cb" id="gf${i}" ${f.state === 'staged' ? 'checked' : ''}>
               <span class="git-file-st git-st-${esc(f.state)}">${esc(f.status)}</span>
               <label class="git-file-path" for="gf${i}">${esc(f.path)}</label>
-            </div>`).join('')
+              ${sizeHtml}
+            </div>`;
+          }).join('')
         : '<div class="git-clean">Working tree clean ✓</div>';
 
       // Stat breakdown bar
@@ -1034,10 +1060,11 @@ class Dashboard {
     const todos  = (d.todos || []);
     const prioIcon = p => p === 'urgent' ? '🔴' : p === 'high' ? '🟠' : p === 'normal' ? '🟡' : '⚪';
     const todoRows = todos.length
-      ? todos.map(t => `<div class="today-todo-item">
+      ? todos.map(t => `<div class="today-todo-item" id="todo-row-${t.id}">
           <span class="today-todo-prio">${prioIcon(t.priority)}</span>
           <span class="today-todo-text">${esc(t.text)}</span>
           <span class="today-todo-meta">#${t.id} · ${esc(t.source||'manual')} · ${esc((t.created_at||'').slice(0,10))}</span>
+          <button class="today-todo-done" onclick="window._dash._completeTodo(${t.id})" title="Mark done">✓</button>
         </div>`).join('')
       : '<div class="today-empty">No open tasks — you\'re clear ✓</div>';
 
@@ -1163,10 +1190,12 @@ class Dashboard {
     const list = $('mem-list');
     list.innerHTML = '';
     for (const f of (data.files || [])) {
+      const name = typeof f === 'string' ? f : f.name;
+      const size = typeof f === 'object' ? f.size : null;
       const div = document.createElement('div');
       div.className = 'mem-item';
-      div.textContent = f;
-      div.onclick = () => this._openMemFile(agentId, f, div);
+      div.innerHTML = `<span class="mem-item-name">${esc(name)}</span>${size ? `<span class="mem-item-size">${esc(size)}</span>` : ''}`;
+      div.onclick = () => this._openMemFile(agentId, name, div);
       list.appendChild(div);
     }
   }

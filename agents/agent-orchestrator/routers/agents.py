@@ -124,7 +124,44 @@ async def list_memory(agent_id: str):
     if not mem.exists():
         return {"files": []}
     TEXT_EXTS = {'.md', '.txt', '.json', '.log', '.yaml', '.yml', '.conf', '.ini', '.toml', '.csv'}
-    return {"files": [f.name for f in sorted(mem.iterdir()) if f.is_file() and f.suffix in TEXT_EXTS]}
+    files = []
+    for f in sorted(mem.iterdir()):
+        if f.is_file() and f.suffix in TEXT_EXTS:
+            size = f.stat().st_size
+            if size >= 1024 * 1024:
+                size_str = f"{size / (1024 * 1024):.1f} MB"
+            elif size >= 1024:
+                size_str = f"{size / 1024:.1f} KB"
+            else:
+                size_str = f"{size} B"
+            files.append({"name": f.name, "size": size_str})
+    return {"files": files}
+
+
+_WORKSPACE_DB = (
+    Path(__file__).resolve().parent.parent.parent.parent
+    / "agents" / "workspace-agent" / "workspace" / "memory" / "workspace.db"
+)
+
+import sqlite3 as _sqlite3
+
+@router.post("/workspace/todos/{todo_id}/complete")
+def complete_todo(todo_id: int):
+    """Mark a workspace todo as completed directly in the DB."""
+    if not _WORKSPACE_DB.exists():
+        return JSONResponse({"ok": False, "error": "workspace DB not found"}, status_code=404)
+    try:
+        from datetime import datetime
+        conn = _sqlite3.connect(str(_WORKSPACE_DB))
+        conn.execute(
+            "UPDATE todos SET status='completed', done_at=? WHERE id=?",
+            (datetime.now().isoformat(timespec="seconds"), todo_id),
+        )
+        conn.commit()
+        conn.close()
+        return {"ok": True, "id": todo_id}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
 @router.get("/{agent_id}/memory/{filename}")

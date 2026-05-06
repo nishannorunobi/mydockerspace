@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-05-05T20:45:59",
+  "last_updated": "2026-05-05T20:57:24",
   "total_containers": 2,
   "running": 2,
   "stopped": 0,
@@ -7,10 +7,10 @@
     {
       "id": "5d0425b43873",
       "name": "ums-app",
-      "status": "Up 2 hours",
+      "status": "Up 3 hours",
       "image": "host_scripts-ums",
-      "running_for": "2 hours ago",
-      "cpu": "0.19%",
+      "running_for": "3 hours ago",
+      "cpu": "0.22%",
       "memory": "279.2MiB / 15.35GiB"
     },
     {

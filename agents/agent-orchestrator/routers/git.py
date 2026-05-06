@@ -113,7 +113,22 @@ def git_status(repo: str = Query(default="")):
             path = line[3:].strip()
             st   = "staged"    if xy[0] not in (" ", "?") else \
                    "untracked" if xy == "??" else "modified"
-            files.append({"status": xy.strip(), "path": path, "state": st})
+            # Resolve rename "old -> new" — take the destination
+            display_path = path.split(" -> ")[-1].strip() if " -> " in path else path
+            abs_path = cwd / display_path
+            try:
+                sz = abs_path.stat().st_size
+                if sz >= 1_048_576:
+                    size_str = f"{sz / 1_048_576:.1f} MB"
+                elif sz >= 1024:
+                    size_str = f"{sz / 1024:.1f} KB"
+                else:
+                    size_str = f"{sz} B"
+            except OSError:
+                sz = 0
+                size_str = "—"
+            files.append({"status": xy.strip(), "path": path, "state": st,
+                          "size": size_str, "size_bytes": sz})
 
     return {
         "branch":        branch.strip(),
