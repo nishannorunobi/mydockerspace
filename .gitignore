@@ -13,8 +13,12 @@ __pycache__/
 logs/
 *.log
 
-# Runtime databases — binary, updated every few seconds, bloats git history (~6 MB/commit)
-# Memory is preserved in text exports: today.json, concerns.md, projects.md, sessions.md
+# Runtime databases — binary, updated every few seconds, bloats git history
 *.db
 *.sqlite
 *.sqlite3
+
+# Runtime state files — auto-written by scanner every 5s, not meaningful to version
+agents/docker-manager-agent/docker_agent/memory/docker_status.json
+agents/workspace-agent/workspace/memory/scan_status.md
+agents/workspace-agent/workspace/memory/today.json
