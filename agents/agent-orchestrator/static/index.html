@@ -102,6 +102,7 @@
         <div class="tab"        data-tab="git"        onclick="window._dash.switchTab('git')"        id="tab-git"        style="display:none">Git</div>
         <div class="tab"        data-tab="console"    onclick="window._dash.switchTab('console')"    id="tab-console"    style="display:none">Console</div>
         <div class="tab"        data-tab="claudecode" onclick="window._dash.switchTab('claudecode')" id="tab-claudecode" style="display:none">Claude Code</div>
+        <div class="tab"        data-tab="controls"   onclick="window._dash.switchTab('controls')"   id="tab-controls"   style="display:none">Controls</div>
         <div class="tab"        data-tab="containers" onclick="window._dash.switchTab('containers')" id="tab-containers" style="display:none">Containers</div>
         <div class="tab"        data-tab="logs"       onclick="window._dash.switchTab('logs')">Logs</div>
         <div class="tab"        data-tab="mem"        onclick="window._dash.switchTab('mem')">Memory</div>
@@ -118,6 +119,13 @@
           <div class="input-row">
             <input id="chat-in" type="text" placeholder="Send a message to this agent…">
             <button class="btn-send" id="btn-send">Send</button>
+          </div>
+        </div>
+
+        <!-- Controls pane (sub-agents: health + service controls) -->
+        <div class="pane" id="pane-controls">
+          <div class="controls-wrap" id="controls-wrap">
+            <div class="controls-loading">Loading…</div>
           </div>
         </div>
 

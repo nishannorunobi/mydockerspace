@@ -3,9 +3,8 @@ Services router — returns all declared web URLs with live reachability status.
 
 GET /api/services   → list of {name, url, agent_id, agent_name, reachable}
 """
-import socket
 import urllib.request
-from urllib.parse import urlparse
+import urllib.error
 
 from fastapi import APIRouter
 import agent_registry as registry
@@ -15,14 +14,14 @@ router = APIRouter(prefix="/services", tags=["services"])
 
 def _reachable(url: str, health_url: str | None = None) -> bool:
     check = health_url or url
-    parsed = urlparse(check)
-    host = parsed.hostname or "localhost"
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
     try:
-        s = socket.create_connection((host, port), timeout=2)
-        s.close()
+        urllib.request.urlopen(check, timeout=2)
+        return True
+    except urllib.error.HTTPError:
+        # Server responded with an HTTP error (4xx/5xx) — it's still up
         return True
     except Exception:
+        # Connection refused, timeout, empty response (e.g. socat→nothing), etc.
         return False
 
 

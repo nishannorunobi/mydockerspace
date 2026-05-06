@@ -5,6 +5,7 @@ To add or remove agents, edit agents.conf only. No code changes needed.
 import configparser
 import subprocess
 import threading
+import urllib.request
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -160,6 +161,17 @@ def _detect(spec: AgentSpec) -> str:
     # Orchestrator is embedded in the dashboard process — always running
     if spec.connector == "orchestrator":
         return "running"
+    # HTTP connector: hit {api_url}/health — accurate even for sub-agents inside containers.
+    # Sub-agents proxied via docker-manager-agent return 503 when their container is down,
+    # so this correctly reflects the container's actual state.
+    if spec.connector == "http" and spec.api_url:
+        health_url = spec.api_url.rstrip("/") + "/health"
+        try:
+            urllib.request.urlopen(health_url, timeout=3)
+            return "running"
+        except Exception:
+            return "stopped"
+    # Subprocess/direct connector: check process is alive via pgrep on home dir
     try:
         if not spec.home:
             return "unknown"

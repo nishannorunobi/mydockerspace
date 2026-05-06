@@ -204,6 +204,28 @@ def _proxy_post(url: str) -> dict:
         return {"error": str(e)}
 
 
+@router.get("/{agent_id}/health")
+async def agent_health_proxy(agent_id: str):
+    """Proxy GET /health to any HTTP agent via its api_url."""
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec or spec.connector != "http" or not spec.api_url:
+        return JSONResponse({"error": "agent has no HTTP API"}, status_code=400)
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(None, _proxy_get, f"{spec.api_url.rstrip('/')}/health")
+    return data
+
+
+@router.post("/{agent_id}/action/{path:path}")
+async def agent_action_proxy(agent_id: str, path: str):
+    """Proxy a POST action to any HTTP agent via its api_url."""
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec or spec.connector != "http" or not spec.api_url:
+        return JSONResponse({"error": "agent has no HTTP API"}, status_code=400)
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(None, _proxy_post, f"{spec.api_url.rstrip('/')}/{path}")
+    return data
+
+
 @router.get("/{agent_id}/sub-agents")
 async def list_sub_agents(agent_id: str):
     spec = registry.SPEC_BY_ID.get(agent_id)

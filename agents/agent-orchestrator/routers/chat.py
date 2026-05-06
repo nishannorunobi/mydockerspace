@@ -395,19 +395,19 @@ async def agent_chat(ws: WebSocket, agent_id: str):
 
             history.append({"role": "user", "content": text})
 
-            if spec.id == "workspace":
-                # Direct chat — workspace-agent handles it without routing
-                history = await _workspace_turn(ws, history, client, text)
-
-            elif spec.id == "orchestrator":
-                # Orchestrator chat — routes to best agent via connectors
-                history = await _orchestrator_turn(ws, history, client, text)
-
-            else:
-                await ws.send_json({
-                    "type": "error",
-                    "content": f"'{spec.name}' has no chat handler (connector={spec.connector!r}).",
-                })
+            try:
+                if spec.id == "workspace":
+                    history = await _workspace_turn(ws, history, client, text)
+                elif spec.id == "orchestrator":
+                    history = await _orchestrator_turn(ws, history, client, text)
+                else:
+                    await ws.send_json({
+                        "type": "error",
+                        "content": f"'{spec.name}' has no chat handler (connector={spec.connector!r}).",
+                    })
+                    await ws.send_json({"type": "done"})
+            except Exception as e:
+                await ws.send_json({"type": "error", "content": f"Agent error: {e}"})
                 await ws.send_json({"type": "done"})
 
     except WebSocketDisconnect:

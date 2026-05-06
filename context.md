@@ -33,10 +33,10 @@ myworkspace/
 
 ### workspace.conf (OS/infrastructure level)
 - `IMAGE_NAME` → derived from `${PROJECT_NAME}-image`
-- `IMAGE_VERSION` → current: `1.3`
+- `IMAGE_VERSION` → current: `1.4`
 - `CONTAINER_NAME` → derived from `${PROJECT_NAME}-container`
-- `BASE_IMAGE` → current: `almalinux:9`
-- `PKG_MANAGER` → current: `dnf`
+- `BASE_IMAGE` → current: `postgres:16`
+- `PKG_MANAGER` → current: `apt`
 - Package names and versions (configurable per distro)
 
 ### project.conf (project-specific)
@@ -85,14 +85,14 @@ Each project (API-Gateway, ums) has its own independent:
 
 ### API-Gateway (APISIX)
 - Repo: `git@github.com:nishannorunobi/myapigw.git`
-- OS: AlmaLinux 9
 - Purpose: APISIX API gateway for Node.js backend service
-- Container: `apigw-container`, Image: `apigw-image`
+- Container: `myapigw-container`, Image: `myapigw-image`
 
 ### UMS (User Management System)
 - Repo: `git@github.com:nishannorunobi/ums.git`
-- OS: AlmaLinux 9
-- Container: `ums-container`, Image: `ums-image`
+- Stack: Java 21, Spring Boot 3, Maven
+- Container: `ums-app`, Image: `ums-image`
+- Port: 8080, Network: `ums-network`
 
 ---
 
@@ -107,12 +107,10 @@ Each project (API-Gateway, ums) has its own independent:
 - **Claude permissions** → configured manually in `~/.claude/settings.json` (outside workspace, user-controlled)
 - **Portainer** runs on `http://localhost:9000`
 - **No Claude references** in any shell scripts — claude/ dir is gitignored
-- **AlmaLinux 9 curl conflict** → `dnf install -y --allowerasing` required; `curl-minimal` is pre-installed and conflicts with `curl` without `--allowerasing`
-
 ---
 
 ## OS & Environment
 - OS: Linux (Ubuntu/XFCE desktop)
-- Docker base image: AlmaLinux 9
-- Package manager inside containers: `dnf`
+- Docker base image: `postgres:16`
+- Package manager inside containers: `apt`
 - Guake terminal autostart: `~/.config/autostart/guake.desktop`

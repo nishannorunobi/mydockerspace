@@ -74,7 +74,21 @@
       "Bash(bash start.sh --daemon)",
       "Bash(curl -s \"http://localhost:8888/health\")",
       "Bash(curl -sv \"http://localhost:8888/api/claude-code/history?limit=2\")",
-      "Bash(curl -s \"http://localhost:8888/api/claude-code/history?limit=2\")"
+      "Bash(curl -s \"http://localhost:8888/api/claude-code/history?limit=2\")",
+      "Read(//proc/**)",
+      "Read(//etc/default/**)",
+      "Bash(bash /home/nishan/myworkspace/agents/agent-orchestrator/start_web.sh)",
+      "Bash(curl -sv http://localhost:8889/api/agents/db-agent)",
+      "Bash(curl -sv http://localhost:8889/api/agents/ums-agent)",
+      "Bash(curl -s http://localhost:8889/api/agents/db-agent/health)",
+      "Bash(curl -s http://localhost:8889/api/agents/ums-agent/health)",
+      "Bash(curl -so /dev/null -w \"%{http_code}\" http://localhost:8889/api/agents/db-agent)",
+      "Bash(curl -so /dev/null -w \"%{http_code}\" http://localhost:8889/api/agents/ums-agent)",
+      "Bash(curl -so /dev/null -w \"%{http_code}\" http://localhost:8889/health)",
+      "Bash(curl -so /dev/null -w \"%{http_code}\" http://localhost:8889/api/agents/db-agent/health)",
+      "Bash(curl -so /dev/null -w \"%{http_code}\" http://localhost:8889/api/agents/ums-agent/health)",
+      "Bash(curl -s http://localhost:8888/api/services)",
+      "Bash(/home/nishan/myworkspace/agents/docker-manager-agent/.venv/bin/python3 -c ' *)"
     ]
   }
 }

@@ -113,7 +113,65 @@ def _send_notification(container_name: str, event: str, detail: str):
         pass  # email is best-effort; container management continues regardless
 
 
-_ORCHESTRATOR_EVENTS_URL = "http://localhost:8888/api/events/notify"
+_ORCHESTRATOR_EVENTS_URL  = "http://localhost:8888/api/events/notify"
+_ORCHESTRATOR_ALERTS_URL  = "http://localhost:8888/api/alerts/ingest"
+_alerted_issues: dict[str, set] = {}  # agent_id → set of active issue strings
+
+
+def _post_to_orchestrator(url: str, body: dict):
+    try:
+        payload = json.dumps(body).encode()
+        req = _urllib_req.Request(
+            url, data=payload,
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        _urllib_req.urlopen(req, timeout=5)
+    except Exception:
+        pass
+
+
+def _poll_sub_agent_health():
+    """Poll each registered sub-agent's /health, detect issues, forward to orchestrator."""
+    try:
+        registrations = db.get_agent_registrations()
+    except Exception:
+        return
+
+    for reg in registrations:
+        agent_id = reg["id"]
+        base = _container_url(reg["container"], reg["port"], reg["network"])
+        if not base:
+            continue
+        try:
+            with _urllib_req.urlopen(f"{base}/health", timeout=5) as r:
+                health = json.loads(r.read())
+            current_issues = set(health.get("issues", []))
+        except Exception:
+            continue
+
+        known = _alerted_issues.get(agent_id, set())
+        new_issues    = current_issues - known
+        cleared_issues = known - current_issues
+
+        for issue in new_issues:
+            _post_to_orchestrator(_ORCHESTRATOR_ALERTS_URL, {
+                "severity":   "critical",
+                "agent_id":   agent_id,
+                "agent_name": reg.get("name", agent_id),
+                "message":    f"{reg.get('name', agent_id)}: {issue}",
+                "alert_type": "agent_issue",
+            })
+
+        if cleared_issues and not current_issues:
+            _post_to_orchestrator(_ORCHESTRATOR_ALERTS_URL, {
+                "severity":   "info",
+                "agent_id":   agent_id,
+                "agent_name": reg.get("name", agent_id),
+                "message":    f"{reg.get('name', agent_id)} issues resolved — operating normally",
+                "alert_type": "agent_recovered",
+            })
+
+        _alerted_issues[agent_id] = current_issues
 
 
 def _notify_orchestrator(event: str, source: str, container: str, data: dict):
@@ -185,6 +243,15 @@ async def startup():
     monitor = DockerMonitor(on_event=_send_notification)
     monitor.start()
     app.state.monitor = monitor
+
+    def _health_poll_loop():
+        import time as _t
+        _t.sleep(20)  # let agents settle on startup before first poll
+        while True:
+            _poll_sub_agent_health()
+            _t.sleep(30)
+
+    threading.Thread(target=_health_poll_loop, daemon=True, name="sub-agent-health-poller").start()
 
 
 @app.on_event("shutdown")

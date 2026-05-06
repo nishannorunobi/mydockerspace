@@ -5,12 +5,8 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #5)_
 
 ## 🔴 HIGH PRIORITY
 
-### C-001 — `context.md` is stale
-- **File:** `context.md`
-- **Issue:** Still references `AlmaLinux 9`, `dnf`, `IMAGE_VERSION=1.3`, `ums-container/apigw-container` — but workspace.conf now shows `BASE_IMAGE=postgres:16`, `PKG_MANAGER=apt`, `IMAGE_VERSION=1.4`, `ums-app`
-- **Risk:** Misleads Claude (or any reader) about the actual OS/environment and container names
-- **Fix:** Update context.md to reflect current state: postgres:16 base, apt pkg manager, IMAGE_VERSION=1.4, PROJECT_NAME=mypostgresql_db, container=ums-app
-- **Status:** OPEN — not fixed since Session 1
+### C-001 — `context.md` is stale ✅ RESOLVED 2026-05-06
+- Updated: IMAGE_VERSION=1.4, BASE_IMAGE=postgres:16, PKG_MANAGER=apt, ums-app container name, removed AlmaLinux curl note
 
 ### C-002 — UMS `docker-compose.yml` references `.env` file ✅ PARTIALLY VERIFIED
 - **File:** `projectspace/ums/dockerspace/host_scripts/docker-compose.yml`
@@ -51,12 +47,8 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #5)_
 - **Fix:** Owner should commit feature work; ensure workspace.db is in .gitignore
 - **Status:** UPDATED cycle #5 — db.py and scanner.py are new additions (workspace scanner feature)
 
-### C-017 — `workspace.db` binary may not be gitignored (NEW — cycle #5)
-- **File:** `agents/workspace-agent/workspace/memory/workspace.db`
-- **Issue:** This SQLite binary is untracked (`??`) in git status — which is correct behaviour IF it is in .gitignore. Needs verification that .gitignore covers it.
-- **Risk:** If not gitignored, the binary could be accidentally committed on next `git add -A`
-- **Fix:** Verify `agents/workspace-agent/.gitignore` or root `.gitignore` covers `*.db` / `workspace.db`; add if missing
-- **Status:** NEW — flagged cycle #5, not yet verified
+### C-017 — `workspace.db` binary may not be gitignored ✅ RESOLVED 2026-05-06
+- Created `agents/workspace-agent/workspace/memory/.gitignore` with `workspace.db` — binary no longer appears in git status
 
 ### C-003 — `mywritings.zip` in projectspace root
 - **File:** `projectspace/mywritings.zip`
