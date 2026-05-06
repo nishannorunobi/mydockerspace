@@ -1,21 +1,21 @@
 # Workspace Scanner — Status
 
-**Last scan:** 2026-05-05 20:57:28  (0.4s)
+**Last scan:** 2026-05-05 21:00:31  (0.3s)
 **Files indexed:** 344  |  **Dirs:** 100
 **Changes this scan:** +6 modified / -0 deleted
-**Total history events:** 4105
+**Total history events:** 4294
 
 ## Recent changes
-- `MODIFIED` agents/docker-manager-agent/docker_agent/memory/docker_status.json  _2026-05-05T20:57:27_
-- `MODIFIED` agents/workspace-agent/workspace/memory/change_log.md  _2026-05-05T20:57:27_
-- `MODIFIED` agents/workspace-agent/workspace/memory/scan_status.md  _2026-05-05T20:57:27_
-- `MODIFIED` agents/workspace-agent/workspace/memory/today.json  _2026-05-05T20:57:27_
-- `MODIFIED` agents/agent-orchestrator/logs/server.log  _2026-05-05T20:57:22_
-- `MODIFIED` agents/docker-manager-agent/docker_agent/memory/events.db  _2026-05-05T20:57:22_
-- `MODIFIED` agents/workspace-agent/workspace/memory/scan_status.md  _2026-05-05T20:57:22_
-- `MODIFIED` agents/workspace-agent/workspace/memory/today.json  _2026-05-05T20:57:22_
-- `MODIFIED` agents/workspace-agent/workspace/memory/scan_status.md  _2026-05-05T20:57:16_
-- `MODIFIED` agents/workspace-agent/workspace/memory/today.json  _2026-05-05T20:57:16_
+- `MODIFIED` agents/workspace-agent/workspace/memory/change_log.md  _2026-05-05T21:00:31_
+- `MODIFIED` agents/workspace-agent/workspace/memory/workspace.db  _2026-05-05T21:00:31_
+- `MODIFIED` agents/workspace-agent/workspace/memory/scan_status.md  _2026-05-05T21:00:31_
+- `MODIFIED` agents/workspace-agent/workspace/memory/today.json  _2026-05-05T21:00:31_
+- `MODIFIED` agents/agent-orchestrator/logs/server.log  _2026-05-05T21:00:29_
+- `MODIFIED` agents/workspace-agent/workspace/memory/scan_status.md  _2026-05-05T21:00:29_
+- `MODIFIED` agents/workspace-agent/workspace/memory/today.json  _2026-05-05T21:00:29_
+- `MODIFIED` agents/workspace-agent/workspace/memory/scan_status.md  _2026-05-05T21:00:25_
+- `MODIFIED` agents/workspace-agent/workspace/memory/today.json  _2026-05-05T21:00:25_
+- `MODIFIED` agents/workspace-agent/workspace/memory/scan_status.md  _2026-05-05T21:00:23_
 
 ## Detected project templates
 - **scripted-service** → `agents/workspace-agent` (start.sh, stop.sh, health.sh...)

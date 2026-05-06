@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-05-05T20:57:24",
+  "last_updated": "2026-05-05T21:00:20",
   "total_containers": 2,
   "running": 2,
   "stopped": 0,
@@ -10,7 +10,7 @@
       "status": "Up 3 hours",
       "image": "host_scripts-ums",
       "running_for": "3 hours ago",
-      "cpu": "0.22%",
+      "cpu": "0.20%",
       "memory": "279.2MiB / 15.35GiB"
     },
     {

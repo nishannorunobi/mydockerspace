@@ -705,6 +705,21 @@ class Dashboard {
       const badge = $('git-branch-badge');
       if (badge) badge.textContent = '⎇ ' + (d.branch || '?');
 
+      // Ahead / behind remote
+      const aheadBadge = $('git-ahead-badge');
+      if (aheadBadge) {
+        if (d.ahead > 0 || d.behind > 0) {
+          aheadBadge.style.display = '';
+          let txt = '';
+          if (d.ahead  > 0) txt += `↑${d.ahead} to push`;
+          if (d.behind > 0) txt += (txt ? '  ' : '') + `↓${d.behind} to pull`;
+          aheadBadge.textContent   = txt;
+          aheadBadge.className     = 'git-ahead-badge' + (d.ahead > 0 ? ' git-ahead-has' : ' git-behind-has');
+        } else {
+          aheadBadge.style.display = 'none';
+        }
+      }
+
       // File list
       this._gitFiles = d.files || [];
       fileList.innerHTML = this._gitFiles.length
@@ -722,7 +737,7 @@ class Dashboard {
               ${sizeHtml}
             </div>`;
           }).join('')
-        : '<div class="git-clean">Working tree clean ✓</div>';
+        : `<div class="git-clean">Working tree clean ✓${d.ahead > 0 ? ` — <span style="color:var(--yellow)">↑${d.ahead} commit${d.ahead>1?'s':''} not pushed yet</span>` : ''}</div>`;
 
       // Stat breakdown bar
       const statBar   = $('git-stat-bar');
