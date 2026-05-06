@@ -678,9 +678,14 @@ class Dashboard {
       const d     = await res.json();
       const repos = d.repos || [];
       if (!repos.length) { sel.innerHTML = '<option value="">No git repos in projectspace</option>'; return; }
-      sel.innerHTML = repos.map(r =>
-        `<option value="${esc(r.path)}">${esc(r.name)}  [${esc(r.branch)}]${r.changed ? `  · ${r.changed} changed` : ''}</option>`
-      ).join('');
+      sel.innerHTML = repos.map(r => {
+        let hint = '';
+        if (r.changed)       hint += `  · ${r.changed} changed`;
+        if (r.ahead  > 0)    hint += `  ↑${r.ahead} to push`;
+        if (r.behind > 0)    hint += `  ↓${r.behind} to pull`;
+        if (!r.has_remote)   hint += '  (no remote)';
+        return `<option value="${esc(r.path)}">${esc(r.name)}  [${esc(r.branch)}]${hint}</option>`;
+      }).join('');
     } catch (_) {
       sel.innerHTML = '<option value="">Failed to load repos</option>';
     }
@@ -1070,9 +1075,14 @@ class Dashboard {
     const sel = $('git-repo-sel');
     if (!sel) return;
     const current = sel.value;
-    sel.innerHTML = repos.map(r =>
-      `<option value="${esc(r.path)}" ${r.path === current ? 'selected' : ''}>${esc(r.name)}  [${esc(r.branch)}]${r.changed ? `  · ${r.changed} changed` : ''}</option>`
-    ).join('');
+    sel.innerHTML = repos.map(r => {
+      let hint = '';
+      if (r.changed)     hint += `  · ${r.changed} changed`;
+      if (r.ahead  > 0)  hint += `  ↑${r.ahead} to push`;
+      if (r.behind > 0)  hint += `  ↓${r.behind} to pull`;
+      if (!r.has_remote) hint += '  (no remote)';
+      return `<option value="${esc(r.path)}" ${r.path === current ? 'selected' : ''}>${esc(r.name)}  [${esc(r.branch)}]${hint}</option>`;
+    }).join('');
     // If current selection was lost (repo removed), refresh git panel
     if (current && sel.value !== current) this._gitRefresh();
   }
@@ -1147,12 +1157,20 @@ class Dashboard {
     const templates = (d.templates || []);
     const projRows  = (gitRepos.length || templates.length)
       ? [
-          ...gitRepos.map(r => `<div class="today-proj-item">
-            <span class="today-proj-type git-repo-badge">git</span>
-            <span class="today-proj-path">${esc(r.name)}</span>
-            <span class="today-proj-branch">[${esc(r.branch)}]</span>
-            <button class="today-proj-open git-btn" style="font-size:9px;padding:1px 5px" onclick="window._dash._gitJumpTo('${esc(r.path)}')">Open</button>
-          </div>`),
+          ...gitRepos.map(r => {
+            let badges = '';
+            if (r.changed)     badges += `<span class="today-git-badge today-git-changed">${r.changed} changed</span>`;
+            if (r.ahead  > 0)  badges += `<span class="today-git-badge today-git-ahead">↑${r.ahead} to push</span>`;
+            if (r.behind > 0)  badges += `<span class="today-git-badge today-git-behind">↓${r.behind} to pull</span>`;
+            if (!r.has_remote) badges += `<span class="today-git-badge today-git-noremote">no remote</span>`;
+            return `<div class="today-proj-item">
+              <span class="today-proj-type git-repo-badge">git</span>
+              <span class="today-proj-path">${esc(r.name)}</span>
+              <span class="today-proj-branch">[${esc(r.branch)}]</span>
+              ${badges}
+              <button class="today-proj-open git-btn" style="font-size:9px;padding:1px 5px" onclick="window._dash._gitJumpTo('${esc(r.path)}')">Open</button>
+            </div>`;
+          }),
           ...templates.map(t => `<div class="today-proj-item">
             <span class="today-proj-type">${esc(t.project_type)}</span>
             <span class="today-proj-path">${esc(t.root_path)}</span>

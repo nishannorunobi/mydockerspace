@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-05-05T21:06:31",
+  "last_updated": "2026-05-05T21:16:16",
   "total_containers": 2,
   "running": 2,
   "stopped": 0,
@@ -10,8 +10,8 @@
       "status": "Up 3 hours",
       "image": "host_scripts-ums",
       "running_for": "3 hours ago",
-      "cpu": "0.20%",
-      "memory": "279.2MiB / 15.35GiB"
+      "cpu": "0.16%",
+      "memory": "279.3MiB / 15.35GiB"
     },
     {
       "id": "f9bb519172be",
@@ -19,7 +19,7 @@
       "status": "Up 7 hours",
       "image": "mypostgresql_db-image:1.0",
       "running_for": "8 days ago",
-      "cpu": "0.15%",
+      "cpu": "0.13%",
       "memory": "127.8MiB / 15.35GiB"
     }
   ],

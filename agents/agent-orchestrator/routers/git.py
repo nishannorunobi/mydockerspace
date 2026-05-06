@@ -52,20 +52,40 @@ def _git(*args, cwd: Path = WORKSPACE_ROOT, timeout: int = 30) -> tuple[int, str
 @router.get("/repos")
 def list_repos():
     """Discover git repositories: root workspace first, then all repos under projectspace/."""
-    repos = []
 
-    # Root workspace repo always first
-    _, branch, _ = _git("branch", "--show-current", cwd=WORKSPACE_ROOT)
-    _, status, _ = _git("status", "--short", cwd=WORKSPACE_ROOT)
-    changed = len([l for l in status.splitlines() if l.strip()])
-    repos.append({
-        "path":    "",
-        "name":    "myworkspace (root)",
-        "branch":  branch.strip() or "?",
-        "changed": changed,
-    })
+    def _repo_info(cwd: Path, path_str: str, name: str) -> dict:
+        _, br, _  = _git("branch", "--show-current", cwd=cwd)
+        _, st, _  = _git("status", "--short", cwd=cwd)
+        _, rm, _  = _git("remote", "-v", cwd=cwd)
+        ch        = len([l for l in st.splitlines() if l.strip()])
+        has_remote = bool(rm.strip())
+        branch_name = br.strip() or "?"
 
-    # Repos under projectspace/
+        # ahead/behind: try @{u} first, then origin/<branch>
+        _, a_raw, _ = _git("rev-list", "@{u}..HEAD", "--count", cwd=cwd)
+        _, b_raw, _ = _git("rev-list", "HEAD..@{u}", "--count", cwd=cwd)
+        ahead  = int(a_raw.strip()) if a_raw.strip().isdigit() else None
+        behind = int(b_raw.strip()) if b_raw.strip().isdigit() else None
+        if ahead is None and has_remote and branch_name not in ("?", ""):
+            _, a2, _ = _git("rev-list", f"origin/{branch_name}..HEAD", "--count", cwd=cwd)
+            _, b2, _ = _git("rev-list", f"HEAD..origin/{branch_name}", "--count", cwd=cwd)
+            ahead  = int(a2.strip()) if a2.strip().isdigit() else 0
+            behind = int(b2.strip()) if b2.strip().isdigit() else 0
+        if ahead is None:
+            ahead = behind = 0
+
+        return {
+            "path":       path_str,
+            "name":       name,
+            "branch":     branch_name,
+            "changed":    ch,
+            "ahead":      ahead,
+            "behind":     behind,
+            "has_remote": has_remote,
+        }
+
+    repos = [_repo_info(WORKSPACE_ROOT, "", "myworkspace (root)")]
+
     if PROJECT_SPACE.exists():
         for p in sorted(PROJECT_SPACE.rglob(".git")):
             if p.is_dir():
@@ -73,17 +93,10 @@ def list_repos():
                 rel = repo_path.relative_to(WORKSPACE_ROOT)
                 if len(rel.parts) <= 3:
                     try:
-                        _, br, _ = _git("branch", "--show-current", cwd=repo_path)
-                        _, st, _ = _git("status", "--short", cwd=repo_path)
-                        ch = len([l for l in st.splitlines() if l.strip()])
-                        repos.append({
-                            "path":    str(rel),
-                            "name":    repo_path.name,
-                            "branch":  br.strip() or "?",
-                            "changed": ch,
-                        })
+                        repos.append(_repo_info(repo_path, str(rel), repo_path.name))
                     except Exception:
-                        repos.append({"path": str(rel), "name": repo_path.name, "branch": "?", "changed": 0})
+                        repos.append({"path": str(rel), "name": repo_path.name,
+                                      "branch": "?", "changed": 0, "ahead": 0, "behind": 0, "has_remote": False})
     return {"repos": repos}
 
 

@@ -428,6 +428,11 @@ body[data-theme="light"]{
 .today-proj-branch{font-size:9px;color:var(--text3);white-space:nowrap}
 .today-proj-open{flex-shrink:0;margin-left:auto}
 .git-repo-badge{background:#1a2a1a;color:#3fb950;border-color:#1a3a1a}
+.today-git-badge{font-size:9px;padding:1px 5px;border-radius:8px;border:1px solid;white-space:nowrap;flex-shrink:0}
+.today-git-changed{background:#1a1a2a;color:var(--blue);border-color:#2a2a4a}
+.today-git-ahead{background:#2a2010;color:var(--yellow);border-color:#5a4a20}
+.today-git-behind{background:#102030;color:var(--blue);border-color:#204060}
+.today-git-noremote{background:var(--bg3);color:var(--text3);border-color:var(--border)}
 .today-know-item{display:flex;gap:8px;padding:4px;font-size:11px;border-bottom:1px solid var(--border2);align-items:center}
 .today-know-item:last-child{border-bottom:none}
 .today-know-cat{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--yellow);white-space:nowrap}
