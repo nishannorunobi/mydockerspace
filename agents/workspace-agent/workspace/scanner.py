@@ -188,6 +188,192 @@ def _build_suggestions(changed: int, deleted: int) -> list[dict]:
     return suggestions
 
 
+_CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects" / "-home-nishan-myworkspace"
+_SKIP_PREFIXES = ("<", "---", "[INST]", "system-reminder")
+
+
+def _extract_text(content) -> str:
+    """Pull clean human-readable text from a JSONL message content field."""
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if not isinstance(part, dict):
+                continue
+            t = part.get("type", "")
+            if t == "text":
+                txt = part.get("text", "").strip()
+                if (txt and len(txt) > 3
+                        and not any(txt.startswith(p) for p in _SKIP_PREFIXES)
+                        and "<task-notification>" not in txt):
+                    parts.append(txt)
+            # skip tool_use, tool_result, thinking
+        return "\n\n".join(parts)
+    elif isinstance(content, str):
+        c = content.strip()
+        if c and not any(c.startswith(p) for p in _SKIP_PREFIXES):
+            return c
+    return ""
+
+
+def _collect_reply_texts(start_uuid: str, by_parent: dict) -> str:
+    """
+    DFS from a user message uuid — collect all assistant text nodes
+    in the reply tree (tool calls, thinking blocks, and nested turns).
+    Returns concatenated text, capped at 8000 chars.
+    """
+    parts: list[str] = []
+    visited: set[str] = set()
+    stack = [start_uuid]
+    while stack:
+        uid = stack.pop()
+        if uid in visited:
+            continue
+        visited.add(uid)
+        for child in by_parent.get(uid, []):
+            child_uuid = child.get("uuid", "")
+            if child.get("type") == "assistant":
+                t = _extract_text(child.get("message", {}).get("content", ""))
+                if t:
+                    parts.append(t)
+            # Continue traversal regardless of node type (tool_result, attachment, etc.)
+            if child_uuid and child_uuid not in visited:
+                stack.append(child_uuid)
+
+    result = "\n\n".join(parts)
+    return result[:8000]
+
+
+def _ingest_claude_prompts():
+    """
+    Read Claude Code JSONL conversation files and import full exchanges
+    (user prompt + full assistant reply tree) into prompt_history.
+    Uses the user message UUID as session_id to deduplicate.
+    """
+    if not _CLAUDE_PROJECTS_DIR.exists():
+        return
+
+    try:
+        # Already-imported user UUIDs that already have a response
+        existing_with_response: set[str] = set()
+        existing_without_response: set[str] = set()
+        try:
+            rows = db.get_prompt_history(limit=99999)
+            for r in rows:
+                sid = r.get("session_id", "")
+                if not sid:
+                    continue
+                if r.get("response"):
+                    existing_with_response.add(sid)
+                else:
+                    existing_without_response.add(sid)
+        except Exception:
+            pass
+
+        existing_all = existing_with_response | existing_without_response
+
+        for jl_file in sorted(_CLAUDE_PROJECTS_DIR.glob("*.jsonl"),
+                               key=lambda f: f.stat().st_mtime):
+            try:
+                records: list[dict] = []
+                with open(jl_file, "r", encoding="utf-8", errors="ignore") as fh:
+                    for raw in fh:
+                        raw = raw.strip()
+                        if not raw:
+                            continue
+                        try:
+                            records.append(json.loads(raw))
+                        except Exception:
+                            continue
+
+                # Build parent → children index
+                by_parent: dict[str, list[dict]] = {}
+                for rec in records:
+                    p = rec.get("parentUuid") or ""
+                    by_parent.setdefault(p, []).append(rec)
+
+                for rec in records:
+                    if rec.get("type") != "user":
+                        continue
+                    uuid = rec.get("uuid", "")
+                    if not uuid:
+                        continue
+                    # Skip if already imported with a response
+                    if uuid in existing_with_response:
+                        continue
+
+                    user_text = _extract_text(
+                        rec.get("message", {}).get("content", "")
+                    )
+                    if not user_text:
+                        continue
+
+                    response_text = _collect_reply_texts(uuid, by_parent)
+
+                    db.log_prompt(
+                        prompt=user_text,
+                        response=response_text,
+                        session_id=uuid,
+                    )
+                    existing_with_response.add(uuid)
+                    existing_all.add(uuid)
+
+            except Exception:
+                continue
+
+    except Exception:
+        pass
+
+
+def _discover_git_repos() -> list[dict]:
+    """Scan for git repositories: root workspace first, then projectspace/."""
+    import subprocess as _sp
+    repos = []
+
+    def _branch(cwd):
+        try:
+            r = _sp.run(["git", "branch", "--show-current"],
+                        cwd=str(cwd), capture_output=True, text=True, timeout=5)
+            return r.stdout.strip() or "?"
+        except Exception:
+            return "?"
+
+    def _changed(cwd):
+        try:
+            r = _sp.run(["git", "status", "--short"],
+                        cwd=str(cwd), capture_output=True, text=True, timeout=5)
+            return len([l for l in r.stdout.splitlines() if l.strip()])
+        except Exception:
+            return 0
+
+    # Root workspace always first
+    repos.append({
+        "path":    "",
+        "name":    "myworkspace (root)",
+        "branch":  _branch(WORKSPACE_ROOT),
+        "changed": _changed(WORKSPACE_ROOT),
+    })
+
+    project_space = WORKSPACE_ROOT / "projectspace"
+    if project_space.exists():
+        try:
+            for git_dir in sorted(project_space.rglob(".git")):
+                if not git_dir.is_dir():
+                    continue
+                repo_path = git_dir.parent
+                rel = repo_path.relative_to(WORKSPACE_ROOT)
+                if len(rel.parts) > 3:
+                    continue
+                repos.append({
+                    "path":    str(rel),
+                    "name":    repo_path.name,
+                    "branch":  _branch(repo_path),
+                    "changed": _changed(repo_path),
+                })
+        except Exception:
+            pass
+    return repos
+
+
 def _write_today():
     """Write today.json — the dashboard Today panel reads this."""
     try:
@@ -196,6 +382,7 @@ def _write_today():
             "todos":            db.get_todos(status="open"),
             "recent_changes":   db.get_recent_changes(15),
             "templates":        db.get_templates(),
+            "git_repos":        _discover_git_repos(),
             "scan_stats":       db.count_files(),
             "last_scan":        db.get_last_scan(),
             "recent_knowledge": db.get_knowledge()[:10],
@@ -249,7 +436,7 @@ def _write_status(indexed: int, changed: int, deleted: int, elapsed: float):
 
 
 class WorkspaceScanner(threading.Thread):
-    INTERVAL = 30  # seconds between scans
+    INTERVAL = 5  # seconds between scans
 
     def __init__(self, on_change: Optional[Callable] = None):
         super().__init__(daemon=True)
@@ -306,6 +493,7 @@ class WorkspaceScanner(threading.Thread):
                 deleted += 1
 
             _detect_templates(root)
+            _ingest_claude_prompts()
 
         finally:
             elapsed = time.monotonic() - t0

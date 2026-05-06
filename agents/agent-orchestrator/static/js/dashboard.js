@@ -291,6 +291,7 @@ class Dashboard {
     document.querySelectorAll('.vbtn').forEach(b => b.classList.toggle('active', b.dataset.view === 'services'));
     this._disconnectChat();
     this._disconnectLogs();
+    this._disconnectCc();
     this.refreshServices();
   }
 
@@ -357,9 +358,13 @@ class Dashboard {
     this._updateSidebar();
     this._disconnectChat();
     this._disconnectLogs();
+    this._disconnectCc();
   }
 
   openDetail(agentId) {
+    // Disconnect live streams from previous agent before switching
+    this._disconnectLogs();
+    this._disconnectCc();
     this._selected = agentId;
     this._view = 'detail';
     $('grid-view').classList.add('hidden');
@@ -392,6 +397,8 @@ class Dashboard {
     if (tabGit)     tabGit.style.display     = isWorkspace ? '' : 'none';
     const tabCon  = $('tab-console');
     if (tabCon)     tabCon.style.display     = isWorkspace ? '' : 'none';
+    const tabCC   = $('tab-claudecode');
+    if (tabCC)      tabCC.style.display      = isWorkspace ? '' : 'none';
 
     // Clear iframe when switching agents
     const frame = document.getElementById('apidocs-frame');
@@ -444,8 +451,9 @@ class Dashboard {
     if (name === 'containers' && this._selected) this._loadContainers(this._selected);
     if (name === 'agents'    && this._selected) this._loadSubAgents(this._selected);
     if (name === 'today'     && this._selected) this._loadToday();
-    if (name === 'git')  this._gitRefresh();
-    if (name === 'console') this._consoleInit();
+    if (name === 'git')        this._gitLoadRepos();
+    if (name === 'console')    this._consoleInit();
+    if (name === 'claudecode') { this._ccInit(); setTimeout(() => this._ccScrollBottom(), 300); }
     if (name === 'apidocs') {
       const frame = document.getElementById('apidocs-frame');
       if (frame && this._currentDocsUrl && !frame.src.endsWith('/docs')) {
@@ -621,7 +629,45 @@ class Dashboard {
     if (this._logEs) { this._logEs.close(); this._logEs = null; }
   }
 
+  _disconnectCc() {
+    if (this._ccEs) { this._ccEs.close(); this._ccEs = null; }
+  }
+
   // ── Git panel ─────────────────────────────────────────────────────────────
+
+  _gitJumpTo(repoPath) {
+    // Switch to git tab and select this repo
+    this.switchTab('git');
+    const sel = $('git-repo-sel');
+    if (sel) {
+      // If repo is already in list, select it; else reload and then select
+      const opt = [...sel.options].find(o => o.value === repoPath);
+      if (opt) { sel.value = repoPath; this._gitRefresh(); }
+      else { this._gitLoadRepos().then(() => { if (sel) { sel.value = repoPath; this._gitRefresh(); } }); }
+    }
+  }
+
+  _gitActiveRepo() {
+    return $('git-repo-sel')?.value || '';
+  }
+
+  async _gitLoadRepos() {
+    const sel = $('git-repo-sel');
+    if (!sel) return;
+    try {
+      const res   = await fetch('/api/git/repos').catch(() => null);
+      if (!res || !res.ok) { sel.innerHTML = '<option value="">No repos found</option>'; return; }
+      const d     = await res.json();
+      const repos = d.repos || [];
+      if (!repos.length) { sel.innerHTML = '<option value="">No git repos in projectspace</option>'; return; }
+      sel.innerHTML = repos.map(r =>
+        `<option value="${esc(r.path)}">${esc(r.name)}  [${esc(r.branch)}]${r.changed ? `  · ${r.changed} changed` : ''}</option>`
+      ).join('');
+    } catch (_) {
+      sel.innerHTML = '<option value="">Failed to load repos</option>';
+    }
+    this._gitRefresh();
+  }
 
   async _gitRefresh() {
     const fileList = $('git-file-list');
@@ -629,10 +675,13 @@ class Dashboard {
     const out      = $('git-output');
     if (!fileList) return;
     fileList.innerHTML = '<div class="git-loading">Loading…</div>';
+    const repo = this._gitActiveRepo();
     try {
-      const res  = await fetch('/api/git/status').catch(() => null);
+      const url  = '/api/git/status' + (repo ? `?repo=${encodeURIComponent(repo)}` : '');
+      const res  = await fetch(url).catch(() => null);
       if (!res || !res.ok) { fileList.innerHTML = '<div class="git-loading">Git unavailable</div>'; return; }
       const d    = await res.json();
+      if (d.error) { fileList.innerHTML = `<div class="git-loading">${esc(d.error)}</div>`; return; }
 
       // Branch badge
       const badge = $('git-branch-badge');
@@ -720,15 +769,15 @@ class Dashboard {
     }
   }
 
-  async _gitAddAll()   { await this._gitPost('/api/git/add-all'); }
-  async _gitPush()     { await this._gitPost('/api/git/push', {}); }
-  async _gitPull()     { await this._gitPost('/api/git/pull'); }
+  async _gitAddAll()   { await this._gitPost('/api/git/add-all', { repo: this._gitActiveRepo() }); }
+  async _gitPush()     { await this._gitPost('/api/git/push',    { repo: this._gitActiveRepo() }); }
+  async _gitPull()     { await this._gitPost('/api/git/pull',    { repo: this._gitActiveRepo() }); }
 
   async _gitCommit() {
     const msg = $('git-commit-msg')?.value?.trim();
     if (!msg) { const o = $('git-output'); if (o) { o.className='git-output err'; o.textContent='Enter a commit message'; } return; }
     const files = this._gitCheckedFiles();
-    const d = await this._gitPost('/api/git/commit', { message: msg, files });
+    const d = await this._gitPost('/api/git/commit', { message: msg, files, repo: this._gitActiveRepo() });
     if (d?.ok && $('git-commit-msg')) $('git-commit-msg').value = '';
   }
 
@@ -805,6 +854,115 @@ class Dashboard {
     if (out) out.innerHTML = '';
   }
 
+  // ── Claude Code memory feed ───────────────────────────────────────────────
+
+  _ccInit() {
+    if (this._ccEs) return;              // already connected
+    const feed  = $('cc-feed');
+    const label = $('cc-live-label');
+    const dot   = $('cc-live-dot');
+    if (!feed) return;
+
+    this._ccSeen  = new Set();           // track IDs to avoid duplicates
+    this._ccTotal = 0;
+
+    this._ccEs = new EventSource('/api/claude-code/stream');
+
+    this._ccEs.onopen = () => {
+      if (dot)   { dot.className = 'cc-live-dot live'; }
+      if (label) label.textContent = 'Live — reading memory…';
+    };
+
+    this._ccEs.onmessage = (e) => {
+      if (!e.data || e.data.startsWith(':')) return;
+      try {
+        const ex = JSON.parse(e.data);
+        if (!ex.id || this._ccSeen.has(+ex.id)) return;
+        this._ccSeen.add(+ex.id);
+        this._ccTotal++;
+        this._ccAppend(ex);
+        if ($('cc-count')) $('cc-count').textContent = `${this._ccTotal} exchanges in memory`;
+        if (dot)   dot.className = 'cc-live-dot live';
+        if (label) label.textContent = `Live · last update ${new Date().toLocaleTimeString()}`;
+      } catch (_) {}
+    };
+
+    this._ccEs.onerror = () => {
+      if (dot)   dot.className = 'cc-live-dot';
+      if (label) label.textContent = 'Reconnecting…';
+    };
+  }
+
+  _ccAppend(ex) {
+    const feed = $('cc-feed');
+    if (!feed) return;
+
+    const prompt = (ex.prompt || '').trim();
+    if (!prompt || prompt.startsWith('<')) return;  // skip system noise
+
+    const div  = document.createElement('div');
+    div.className = 'cc-exchange';
+    div.dataset.id = ex.id;
+
+    const ts   = (ex.timestamp || '').slice(0, 16).replace('T', ' ');
+    const resp = (ex.response || '').trim();
+
+    div.innerHTML = `
+      <div class="cc-ts">${esc(ts)}</div>
+      <div class="cc-user-wrap">
+        <div class="cc-bubble">
+          <div class="cc-bubble-label">You</div>
+          <div class="cc-bubble-text">${esc(prompt.slice(0, 600))}${prompt.length > 600 ? '\n…' : ''}</div>
+        </div>
+      </div>
+      ${resp ? `
+      <div class="cc-assistant-wrap">
+        <div class="cc-bubble">
+          <div class="cc-bubble-label">Claude</div>
+          <div class="cc-bubble-text">${esc(resp.slice(0, 1200))}${resp.length > 1200 ? '\n…' : ''}</div>
+        </div>
+      </div>
+      <div class="cc-memory-tag">✓ in memory</div>` :
+      `<div class="cc-no-response">response pending next scan…</div>`}`;
+
+    feed.appendChild(div);
+  }
+
+  async _ccScrollBottom() {
+    // Pull any new exchanges immediately, then scroll
+    const feed = $('cc-feed');
+    if (!feed) return;
+    const lastId = this._ccSeen.size ? Math.max(...this._ccSeen) : 0;
+    try {
+      const res = await fetch(`/api/claude-code/history?limit=50&after_id=${lastId}`).catch(() => null);
+      if (res && res.ok) {
+        const d = await res.json();
+        for (const ex of (d.exchanges || [])) {
+          if (!this._ccSeen.has(+ex.id)) {
+            this._ccSeen.add(+ex.id);
+            this._ccTotal++;
+            this._ccAppend(ex);
+          }
+        }
+        if ($('cc-count')) $('cc-count').textContent = `${this._ccTotal} exchanges in memory`;
+      }
+    } catch (_) {}
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  _ccClear() {
+    // Only clears the visual view — DB memory is untouched
+    const feed = $('cc-feed');
+    if (feed) {
+      feed.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:20px;text-align:center">View cleared — DB memory preserved. New entries will appear as they arrive.</div>';
+      this._ccSeen  = new Set();
+      this._ccTotal = 0;
+    }
+    // Reconnect SSE to reload history
+    if (this._ccEs) { this._ccEs.close(); this._ccEs = null; }
+    setTimeout(() => this._ccInit(), 500);
+  }
+
   // ── Workspace pulse bar ───────────────────────────────────────────────────
 
   async _loadPulse() {
@@ -850,9 +1008,22 @@ class Dashboard {
       const data = await res.json();
       const content = JSON.parse(data.content || '{}');
       wrap.innerHTML = this._renderToday(content);
+      // Sync git repo selector if git tab is loaded and today has fresh repos
+      if (content.git_repos?.length) this._gitSyncRepos(content.git_repos);
     } catch (e) {
       wrap.innerHTML = `<div class="today-loading">Error: ${esc(String(e))}</div>`;
     }
+  }
+
+  _gitSyncRepos(repos) {
+    const sel = $('git-repo-sel');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = repos.map(r =>
+      `<option value="${esc(r.path)}" ${r.path === current ? 'selected' : ''}>${esc(r.name)}  [${esc(r.branch)}]${r.changed ? `  · ${r.changed} changed` : ''}</option>`
+    ).join('');
+    // If current selection was lost (repo removed), refresh git panel
+    if (current && sel.value !== current) this._gitRefresh();
   }
 
   _renderToday(d) {
@@ -917,14 +1088,25 @@ class Dashboard {
         </div>`).join('')
       : '<div class="today-empty">No recent changes</div>';
 
+    // Git repos (dynamically discovered from projectspace)
+    const gitRepos  = (d.git_repos || []);
+
     // Templates / projects
     const templates = (d.templates || []);
-    const projRows  = templates.length
-      ? templates.map(t => `<div class="today-proj-item">
-          <span class="today-proj-type">${esc(t.project_type)}</span>
-          <span class="today-proj-path">${esc(t.root_path)}</span>
-        </div>`).join('')
-      : '<div class="today-empty">No templates detected</div>';
+    const projRows  = (gitRepos.length || templates.length)
+      ? [
+          ...gitRepos.map(r => `<div class="today-proj-item">
+            <span class="today-proj-type git-repo-badge">git</span>
+            <span class="today-proj-path">${esc(r.name)}</span>
+            <span class="today-proj-branch">[${esc(r.branch)}]</span>
+            <button class="today-proj-open git-btn" style="font-size:9px;padding:1px 5px" onclick="window._dash._gitJumpTo('${esc(r.path)}')">Open</button>
+          </div>`),
+          ...templates.map(t => `<div class="today-proj-item">
+            <span class="today-proj-type">${esc(t.project_type)}</span>
+            <span class="today-proj-path">${esc(t.root_path)}</span>
+          </div>`),
+        ].join('')
+      : '<div class="today-empty">No projects detected</div>';
 
     // Knowledge
     const knowledge = (d.recent_knowledge || []).slice(0, 5);

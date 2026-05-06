@@ -96,6 +96,8 @@ def init():
             CREATE INDEX IF NOT EXISTS idx_know_cat  ON knowledge (category);
             CREATE INDEX IF NOT EXISTS idx_todo_stat ON todos (status);
             CREATE INDEX IF NOT EXISTS idx_ph_ts     ON prompt_history (timestamp);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_ph_uuid ON prompt_history (session_id)
+                WHERE session_id IS NOT NULL AND session_id != '';
         """)
 
 
@@ -340,10 +342,18 @@ def get_todos(status: str = "open") -> list[dict]:
 def log_prompt(prompt: str, response: str = "", session_id: str = ""):
     with _lock:
         with _connect() as c:
+            # Insert new; if UUID already exists, backfill response if it was empty
             c.execute(
-                "INSERT INTO prompt_history (timestamp,prompt,response,session_id) VALUES (?,?,?,?)",
-                (_ts(), prompt[:2000], response[:2000], session_id),
+                "INSERT OR IGNORE INTO prompt_history (timestamp,prompt,response,session_id) "
+                "VALUES (?,?,?,?)",
+                (_ts(), prompt[:4000], response[:8000], session_id),
             )
+            if session_id and response:
+                c.execute(
+                    "UPDATE prompt_history SET response=? "
+                    "WHERE session_id=? AND (response IS NULL OR response='')",
+                    (response[:8000], session_id),
+                )
 
 
 def get_prompt_history(limit: int = 20, session_id: str = "") -> list[dict]:

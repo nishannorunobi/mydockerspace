@@ -11,54 +11,29 @@
   "git_status": "clean \u2014 only 3 runtime files modified (docker_status.json, events.db, change_log.md)",
   "projects": {
     "ums": {
-      "purpose": "Spring Boot 3 / Java 21 User Management System API",
-      "container_name": "ums-app",
-      "port": 8080,
-      "network": "ums-network",
-      "stack": "Java 21, Spring Boot 3, Maven, Docker multi-stage",
-      "repo": "git@github.com:nishannorunobi/ums.git",
+      "type": "spring-boot-maven",
       "status": "active",
-      "dockerfile": "projectspace/ums/dockerspace/host_scripts/Dockerfile",
-      "compose": "projectspace/ums/dockerspace/host_scripts/docker-compose.yml"
+      "uncommitted_changes": true,
+      "notes": "New Admin UI scripts added (start_admin_ui.sh, health_admin_ui.sh, common.sh, build_env_ui.sh). UserRepository.java modified."
     },
-    "mypostgresql_db": {
-      "purpose": "PostgreSQL 16 dev database for UMS",
-      "container_name": "mypostgresql_db-container",
-      "port": 8085,
-      "db_port": 5432,
-      "network": "ums-network",
-      "stack": "PostgreSQL 16",
-      "repo": "git@github.com:nishannorunobi/mypostgresql_db.git",
+    "agent-orchestrator": {
+      "type": "fastapi-dashboard",
       "status": "active",
-      "dockerfile": "projectspace/mypostgresql_db/dockerspace/Dockerfile"
-    },
-    "claude-agent": {
-      "purpose": "Claude API agent that tests UMS endpoints and logs to PostgreSQL",
-      "container_name": "claude-agent",
-      "network": "ums-network",
-      "stack": "Python, Anthropic Claude API, PostgreSQL",
-      "connects_to": [
-        "ums-app:8080",
-        "mypostgresql_db-container:5432"
-      ],
-      "config_file": "projectspace/ai-agents/claude-agent/agent.conf",
-      "status": "active"
-    },
-    "myapigw": {
-      "purpose": "API Gateway (APISIX planned)",
-      "repo": "git@github.com:nishannorunobi/myapigw.git",
-      "status": "stub \u2014 README only, no dockerspace/"
-    },
-    "pc-maker": {
-      "purpose": "PC setup and OS scripts",
-      "status": "utility scripts, no Docker"
-    },
-    "mywrites": {
-      "purpose": "Academic writing (LaTeX papers)",
-      "status": "active writing"
+      "uncommitted_changes": true,
+      "notes": "Claude Code SSE viewer tab added. Multi-repo git selector implemented. dashboard.js is 1399 lines."
     },
     "workspace-agent": {
-      "purpose": "Workspace Management Agent",
+      "type": "scripted-service",
+      "status": "active",
+      "uncommitted_changes": true,
+      "notes": "scanner.py extended with JSONL ingestion + git repo discovery. db.py schema migration added."
+    },
+    "mypostgresql_db": {
+      "type": "docker-postgres",
+      "status": "active"
+    },
+    "ums-agent": {
+      "type": "python-http-agent",
       "status": "active"
     }
   },
@@ -91,7 +66,7 @@
     "no_env_files_in_git": true,
     "network": "ums-network (shared, external)"
   },
-  "last_updated": "2026-05-05T16:11:08.750407",
+  "last_updated": "2026-05-05T20:35:57.128355",
   "last_maintenance_cycle": "2026-05-05 Cycle #4",
   "cycle_number": 3,
   "overall_health": "DEGRADED",
@@ -182,5 +157,19 @@
     "agents/agent-orchestrator/static/js/urls.js",
     "agents/docker-manager-agent/docker_agent/memory/port_forwards.json"
   ],
-  "ums_actuator_root_cause": "spring-boot-starter-actuator missing from pom.xml entirely"
+  "ums_actuator_root_cause": "spring-boot-starter-actuator missing from pom.xml entirely",
+  "last_self_scan": "2026-05-05T20:25:00",
+  "workspace_state": {
+    "total_files": 444,
+    "total_dirs": 100,
+    "history_events": 2491
+  },
+  "active_concerns": [
+    "15+ uncommitted files in workspace git repo \u2014 urgent commit needed",
+    "projectspace/temp/myworkspace stale clone inflating index by ~90 files",
+    "UMS Admin UI scripts uncommitted",
+    "No test coverage for Python agents"
+  ],
+  "open_todos": 5,
+  "knowledge_entries": 8
 }

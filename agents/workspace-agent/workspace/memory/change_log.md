@@ -515,3 +515,336 @@ _Tracks notable workspace changes with dates_
   - ?? agents/workspace-agent/workspace/memory/workspace.db
   - ?? agents/workspace-agent/workspace/scanner.py
   - M .claude/settings.json
+
+---
+**2026-05-05 19:37:51** — auto-detected
+  - A  agents/agent-orchestrator/routers/console.py
+  - A  agents/agent-orchestrator/routers/git.py
+  - A  agents/workspace-agent/workspace/db.py
+  - A  agents/workspace-agent/workspace/memory/scan_status.md
+  - A  agents/workspace-agent/workspace/memory/today.json
+  - A  agents/workspace-agent/workspace/memory/workspace.db
+  - A  agents/workspace-agent/workspace/scanner.py
+  - M  .claude/settings.json
+  - M  agents/agent-orchestrator/agents.conf
+  - M  agents/agent-orchestrator/connectors/http.py
+  - M  agents/agent-orchestrator/routers/agents.py
+  - M  agents/agent-orchestrator/routers/events.py
+  - M  agents/agent-orchestrator/server.py
+  - M  agents/agent-orchestrator/static/css/style.css
+  - M  agents/agent-orchestrator/static/index.html
+  - M  agents/agent-orchestrator/static/js/dashboard.js
+  - M  agents/docker-manager-agent/docker_agent/agent.py
+  - M  agents/docker-manager-agent/docker_agent/database.py
+  - M  agents/docker-manager-agent/docker_agent/memory/docker_status.json
+  - M  agents/docker-manager-agent/docker_agent/monitor.py
+  - M  agents/docker-manager-agent/docker_agent/server.py
+  - M  agents/docker-manager-agent/docker_agent/tools.py
+  - M  agents/docker-manager-agent/server.conf
+  - M  agents/workspace-agent/workspace/agent.py
+  - M  agents/workspace-agent/workspace/memory/change_log.md
+  - M  agents/workspace-agent/workspace/memory/concerns.md
+  - M  agents/workspace-agent/workspace/memory/meta.json
+  - M  agents/workspace-agent/workspace/memory/sessions.md
+  - M  agents/workspace-agent/workspace/monitor.py
+  - M  agents/workspace-agent/workspace/tools.py
+  - MM agents/docker-manager-agent/docker_agent/memory/events.db
+
+---
+**2026-05-05 19:38:06** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/memory/events.db
+  +  M agents/workspace-agent/workspace/memory/change_log.md
+  + M agents/docker-manager-agent/docker_agent/memory/docker_status.json
+
+---
+**2026-05-05 19:38:21** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/scan_status.md
+  +  M agents/workspace-agent/workspace/memory/today.json
+  +  M agents/workspace-agent/workspace/memory/workspace.db
+
+---
+**2026-05-05 19:43:51** — auto-detected
+  +  M agents/docker-manager-agent/docker_agent/memory/docker_status.json
+  + M agents/agent-orchestrator/routers/git.py
+  - M agents/docker-manager-agent/docker_agent/memory/docker_status.json
+
+---
+**2026-05-05 19:44:06** — auto-detected
+  +  M agents/workspace-agent/workspace/scanner.py
+
+---
+**2026-05-05 19:44:21** — auto-detected
+  +  M agents/agent-orchestrator/static/index.html
+
+---
+**2026-05-05 19:44:36** — auto-detected
+  +  M agents/agent-orchestrator/static/css/style.css
+
+---
+**2026-05-05 19:44:51** — auto-detected
+  +  M agents/agent-orchestrator/static/js/dashboard.js
+
+---
+**2026-05-05 19:46:34** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:51:04** — auto-detected
+  +  M agents/agent-orchestrator/routers/git.py
+  + M .claude/settings.json
+  - M agents/agent-orchestrator/routers/git.py
+
+---
+**2026-05-05 19:51:06** — auto-detected
+  +  M agents/agent-orchestrator/routers/git.py
+  + M .claude/settings.json
+  - M agents/agent-orchestrator/routers/git.py
+
+---
+**2026-05-05 19:51:19** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/sessions.md
+
+---
+**2026-05-05 19:51:21** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/sessions.md
+
+---
+**2026-05-05 19:51:24** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:53:34** — auto-detected
+  +  M agents/workspace-agent/workspace/db.py
+
+---
+**2026-05-05 19:53:36** — auto-detected
+  +  M agents/workspace-agent/workspace/db.py
+
+---
+**2026-05-05 19:53:39** — auto-detected
+  +  M agents/workspace-agent/workspace/db.py
+
+---
+**2026-05-05 19:55:34** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:55:49** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:56:00** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:56:49** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:57:04** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:57:19** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:57:34** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:58:49** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 19:59:04** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:00:46** — auto-detected
+  + ?? agents/agent-orchestrator/routers/claude_code.py
+
+---
+**2026-05-05 20:00:52** — auto-detected
+  + ?? agents/agent-orchestrator/routers/claude_code.py
+
+---
+**2026-05-05 20:00:53** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:01:01** — auto-detected
+  +  M agents/agent-orchestrator/server.py
+
+---
+**2026-05-05 20:01:07** — auto-detected
+  +  M agents/agent-orchestrator/server.py
+
+---
+**2026-05-05 20:01:10** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:05:25** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:05:40** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:17:14** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:24:44** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:24:59** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:24:59** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:30:59** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:31:14** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:33:44** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:33:59** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:35:29** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:35:44** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:35:52** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:35:59** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/meta.json
+
+---
+**2026-05-05 20:36:00** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/meta.json
+
+---
+**2026-05-05 20:36:07** — auto-detected
+  +  M agents/workspace-agent/workspace/memory/meta.json
+
+---
+**2026-05-05 20:41:25** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:43:59** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:44:10** — auto-detected
+  + ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:44:14** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:44:25** — auto-detected
+  - ?? agents/workspace-agent/workspace/memory/workspace.db-journal
+
+---
+**2026-05-05 20:45:44** — auto-detected
+  + A  agents/agent-orchestrator/routers/claude_code.py
+  + M  .claude/settings.json
+  + M  agents/agent-orchestrator/routers/git.py
+  + M  agents/agent-orchestrator/server.py
+  + M  agents/agent-orchestrator/static/css/style.css
+  + M  agents/agent-orchestrator/static/index.html
+  + M  agents/agent-orchestrator/static/js/dashboard.js
+  + M  agents/docker-manager-agent/docker_agent/memory/docker_status.json
+  + M  agents/docker-manager-agent/docker_agent/memory/events.db
+  + M  agents/workspace-agent/workspace/db.py
+  + M  agents/workspace-agent/workspace/memory/change_log.md
+  + M  agents/workspace-agent/workspace/memory/meta.json
+  + M  agents/workspace-agent/workspace/memory/sessions.md
+  + M  agents/workspace-agent/workspace/scanner.py
+  + MM agents/workspace-agent/workspace/memory/scan_status.md
+  + MM agents/workspace-agent/workspace/memory/today.json
+  + MM agents/workspace-agent/workspace/memory/workspace.db
+  -  M agents/agent-orchestrator/routers/git.py
+  -  M agents/agent-orchestrator/server.py
+  -  M agents/agent-orchestrator/static/css/style.css
+  -  M agents/agent-orchestrator/static/index.html
+  -  M agents/agent-orchestrator/static/js/dashboard.js
+  -  M agents/docker-manager-agent/docker_agent/memory/docker_status.json
+  -  M agents/docker-manager-agent/docker_agent/memory/events.db
+  -  M agents/workspace-agent/workspace/db.py
+  -  M agents/workspace-agent/workspace/memory/change_log.md
+  -  M agents/workspace-agent/workspace/memory/meta.json
+  -  M agents/workspace-agent/workspace/memory/scan_status.md
+  -  M agents/workspace-agent/workspace/memory/sessions.md
+  -  M agents/workspace-agent/workspace/memory/today.json
+  -  M agents/workspace-agent/workspace/memory/workspace.db
+  -  M agents/workspace-agent/workspace/scanner.py
+  - ?? agents/agent-orchestrator/routers/claude_code.py
+  - M .claude/settings.json
+
+---
+**2026-05-05 20:45:55** — auto-detected
+  + A  agents/agent-orchestrator/routers/claude_code.py
+  + M  .claude/settings.json
+  + M  agents/agent-orchestrator/routers/git.py
+  + M  agents/agent-orchestrator/server.py
+  + M  agents/agent-orchestrator/static/css/style.css
+  + M  agents/agent-orchestrator/static/index.html
+  + M  agents/agent-orchestrator/static/js/dashboard.js
+  + M  agents/docker-manager-agent/docker_agent/memory/docker_status.json
+  + M  agents/docker-manager-agent/docker_agent/memory/events.db
+  + M  agents/workspace-agent/workspace/db.py
+  + M  agents/workspace-agent/workspace/memory/meta.json
+  + M  agents/workspace-agent/workspace/memory/sessions.md
+  + M  agents/workspace-agent/workspace/scanner.py
+  + MM agents/workspace-agent/workspace/memory/change_log.md
+  + MM agents/workspace-agent/workspace/memory/scan_status.md
+  + MM agents/workspace-agent/workspace/memory/today.json
+  + MM agents/workspace-agent/workspace/memory/workspace.db
+  -  M agents/agent-orchestrator/routers/git.py
+  -  M agents/agent-orchestrator/server.py
+  -  M agents/agent-orchestrator/static/css/style.css
+  -  M agents/agent-orchestrator/static/index.html
+  -  M agents/agent-orchestrator/static/js/dashboard.js
+  -  M agents/docker-manager-agent/docker_agent/memory/docker_status.json
+  -  M agents/docker-manager-agent/docker_agent/memory/events.db
+  -  M agents/workspace-agent/workspace/db.py
+  -  M agents/workspace-agent/workspace/memory/change_log.md
+  -  M agents/workspace-agent/workspace/memory/meta.json
+  -  M agents/workspace-agent/workspace/memory/scan_status.md
+  -  M agents/workspace-agent/workspace/memory/sessions.md
+  -  M agents/workspace-agent/workspace/memory/today.json
+  -  M agents/workspace-agent/workspace/memory/workspace.db
+  -  M agents/workspace-agent/workspace/scanner.py
+  - ?? agents/agent-orchestrator/routers/claude_code.py
+  - M .claude/settings.json
+
+---
+**2026-05-05 20:45:59** — auto-detected
+  + MM agents/docker-manager-agent/docker_agent/memory/events.db
+  + MM agents/workspace-agent/workspace/memory/change_log.md
+  - M  agents/docker-manager-agent/docker_agent/memory/events.db
+  - M  agents/workspace-agent/workspace/memory/change_log.md

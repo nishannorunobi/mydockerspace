@@ -70,7 +70,11 @@
       "Bash(curl -s http://localhost:8889/api/config)",
       "Bash(chmod +x /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/start_admin_ui.sh /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/stop_admin_ui.sh /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/health_admin_ui.sh)",
       "Bash(chmod +x /home/nishan/myworkspace/projectspace/ums/dockerspace/container_scripts/build_env_ui.sh)",
-      "Bash(curl -s \"http://localhost:8888/api/console/exec\" -X POST -H \"Content-Type: application/json\" -d '{\"command\":\"echo hello && pwd\"}')"
+      "Bash(curl -s \"http://localhost:8888/api/console/exec\" -X POST -H \"Content-Type: application/json\" -d '{\"command\":\"echo hello && pwd\"}')",
+      "Bash(bash start.sh --daemon)",
+      "Bash(curl -s \"http://localhost:8888/health\")",
+      "Bash(curl -sv \"http://localhost:8888/api/claude-code/history?limit=2\")",
+      "Bash(curl -s \"http://localhost:8888/api/claude-code/history?limit=2\")"
     ]
   }
 }

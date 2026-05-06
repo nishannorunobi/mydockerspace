@@ -101,6 +101,7 @@
         <div class="tab"        data-tab="today"      onclick="window._dash.switchTab('today')"      id="tab-today"      style="display:none">Today</div>
         <div class="tab"        data-tab="git"        onclick="window._dash.switchTab('git')"        id="tab-git"        style="display:none">Git</div>
         <div class="tab"        data-tab="console"    onclick="window._dash.switchTab('console')"    id="tab-console"    style="display:none">Console</div>
+        <div class="tab"        data-tab="claudecode" onclick="window._dash.switchTab('claudecode')" id="tab-claudecode" style="display:none">Claude Code</div>
         <div class="tab"        data-tab="containers" onclick="window._dash.switchTab('containers')" id="tab-containers" style="display:none">Containers</div>
         <div class="tab"        data-tab="logs"       onclick="window._dash.switchTab('logs')">Logs</div>
         <div class="tab"        data-tab="mem"        onclick="window._dash.switchTab('mem')">Memory</div>
@@ -137,8 +138,10 @@
             <div class="git-top">
               <div class="git-status-col">
                 <div class="git-section-title">
+                  <select id="git-repo-sel" class="git-repo-sel" title="Select project" onchange="window._dash._gitRefresh()">
+                    <option value="">Loading repos…</option>
+                  </select>
                   <span id="git-branch-badge" class="git-branch">—</span>
-                  <span class="git-section-label">Changed Files</span>
                   <div class="git-top-actions">
                     <button class="git-btn" onclick="window._dash._gitRefresh()">↺ Refresh</button>
                     <button class="git-btn accent" onclick="window._dash._gitAddAll()">+ Stage All</button>
@@ -181,6 +184,22 @@
           <div class="today-wrap" id="today-wrap">
             <div class="today-loading">Loading workspace intelligence…</div>
           </div>
+        </div>
+
+        <!-- Claude Code memory feed (workspace agent only) -->
+        <div class="pane" id="pane-claudecode">
+          <div class="cc-header">
+            <div class="cc-live-indicator">
+              <div class="cc-live-dot" id="cc-live-dot"></div>
+              <span id="cc-live-label">Connecting…</span>
+            </div>
+            <div class="cc-header-actions">
+              <span class="cc-count" id="cc-count"></span>
+              <button class="git-btn" onclick="window._dash._ccScrollBottom()">↓ Latest</button>
+              <button class="git-btn" onclick="window._dash._ccClear()">Clear view</button>
+            </div>
+          </div>
+          <div class="cc-feed" id="cc-feed"></div>
         </div>
 
         <!-- Logs pane -->

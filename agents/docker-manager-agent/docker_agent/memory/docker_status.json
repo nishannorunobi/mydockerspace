@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-05-05T19:37:36",
+  "last_updated": "2026-05-05T20:45:59",
   "total_containers": 2,
   "running": 2,
   "stopped": 0,
@@ -7,20 +7,20 @@
     {
       "id": "5d0425b43873",
       "name": "ums-app",
-      "status": "Up About an hour",
+      "status": "Up 2 hours",
       "image": "host_scripts-ums",
-      "running_for": "About an hour ago",
-      "cpu": "0.20%",
-      "memory": "271MiB / 15.35GiB"
+      "running_for": "2 hours ago",
+      "cpu": "0.19%",
+      "memory": "279.2MiB / 15.35GiB"
     },
     {
       "id": "f9bb519172be",
       "name": "mypostgresql_db-container",
-      "status": "Up 6 hours",
+      "status": "Up 7 hours",
       "image": "mypostgresql_db-image:1.0",
       "running_for": "8 days ago",
       "cpu": "0.15%",
-      "memory": "127.7MiB / 15.35GiB"
+      "memory": "127.8MiB / 15.35GiB"
     }
   ],
   "recent_events": [
