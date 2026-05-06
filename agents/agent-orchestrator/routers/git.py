@@ -101,10 +101,24 @@ def git_status(repo: str = Query(default="")):
     rc4, unstaged, _ = _git("diff", "--stat", cwd=cwd)
     rc5, branch, _   = _git("branch", "--show-current", cwd=cwd)
     rc6, remote, _   = _git("remote", "-v", cwd=cwd)
-    _, ahead_raw, _  = _git("rev-list", "@{u}..HEAD", "--count", cwd=cwd)
-    _, behind_raw, _ = _git("rev-list", "HEAD..@{u}", "--count", cwd=cwd)
-    ahead  = int(ahead_raw.strip())  if ahead_raw.strip().isdigit()  else 0
-    behind = int(behind_raw.strip()) if behind_raw.strip().isdigit() else 0
+    has_remote = bool(remote.strip())
+
+    # Try tracking branch first (@{u}), fall back to origin/<branch>
+    branch_name = branch.strip()
+    _, ahead_raw,  _ = _git("rev-list", "@{u}..HEAD",  "--count", cwd=cwd)
+    _, behind_raw, _ = _git("rev-list", "HEAD..@{u}",  "--count", cwd=cwd)
+    ahead  = int(ahead_raw.strip())  if ahead_raw.strip().isdigit()  else None
+    behind = int(behind_raw.strip()) if behind_raw.strip().isdigit() else None
+
+    if ahead is None and has_remote and branch_name:
+        _, a2, _ = _git("rev-list", f"origin/{branch_name}..HEAD", "--count", cwd=cwd)
+        _, b2, _ = _git("rev-list", f"HEAD..origin/{branch_name}", "--count", cwd=cwd)
+        ahead  = int(a2.strip()) if a2.strip().isdigit() else 0
+        behind = int(b2.strip()) if b2.strip().isdigit() else 0
+
+    if ahead is None:
+        ahead  = 0
+        behind = 0
 
     lines       = status.splitlines() if status else []
     branch_line = lines[0] if lines else ""
@@ -141,7 +155,7 @@ def git_status(repo: str = Query(default="")):
         "log":           log,
         "staged_stat":   staged,
         "unstaged_stat": unstaged,
-        "has_remote":    bool(remote),
+        "has_remote":    has_remote,
         "ahead":         ahead,
         "behind":        behind,
         "repo":          repo or ".",

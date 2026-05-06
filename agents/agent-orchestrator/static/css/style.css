@@ -325,6 +325,8 @@ body[data-theme="light"]{
 .git-ahead-badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;border:1px solid}
 .git-ahead-has{background:#2a2010;color:var(--yellow);border-color:#5a4a20}
 .git-behind-has{background:#102030;color:var(--blue);border-color:#204060}
+.git-synced{background:#0a1a0a;color:var(--green);border-color:#1a3a1a}
+.git-no-remote{background:var(--bg3);color:var(--text3);border-color:var(--border)}
 .git-repo-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 6px;font-size:11px;font-family:var(--font);max-width:200px;cursor:pointer}
 .git-repo-sel:focus{outline:none;border-color:var(--blue)}
 .git-top-actions{display:flex;gap:5px;margin-left:auto}

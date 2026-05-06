@@ -708,7 +708,11 @@ class Dashboard {
       // Ahead / behind remote
       const aheadBadge = $('git-ahead-badge');
       if (aheadBadge) {
-        if (d.ahead > 0 || d.behind > 0) {
+        if (!d.has_remote) {
+          aheadBadge.style.display = '';
+          aheadBadge.textContent   = 'no remote';
+          aheadBadge.className     = 'git-ahead-badge git-no-remote';
+        } else if (d.ahead > 0 || d.behind > 0) {
           aheadBadge.style.display = '';
           let txt = '';
           if (d.ahead  > 0) txt += `↑${d.ahead} to push`;
@@ -716,7 +720,9 @@ class Dashboard {
           aheadBadge.textContent   = txt;
           aheadBadge.className     = 'git-ahead-badge' + (d.ahead > 0 ? ' git-ahead-has' : ' git-behind-has');
         } else {
-          aheadBadge.style.display = 'none';
+          aheadBadge.style.display = '';
+          aheadBadge.textContent   = '✓ up to date';
+          aheadBadge.className     = 'git-ahead-badge git-synced';
         }
       }
 
@@ -737,7 +743,11 @@ class Dashboard {
               ${sizeHtml}
             </div>`;
           }).join('')
-        : `<div class="git-clean">Working tree clean ✓${d.ahead > 0 ? ` — <span style="color:var(--yellow)">↑${d.ahead} commit${d.ahead>1?'s':''} not pushed yet</span>` : ''}</div>`;
+        : `<div class="git-clean">Working tree clean ✓${
+            !d.has_remote   ? ' — <span style="color:var(--text3)">no remote configured</span>' :
+            d.ahead > 0     ? ` — <span style="color:var(--yellow)">↑${d.ahead} commit${d.ahead>1?'s':''} not pushed yet</span>` :
+            d.behind > 0    ? ` — <span style="color:var(--blue)">↓${d.behind} commit${d.behind>1?'s':''} to pull</span>` : ''
+          }</div>`;
 
       // Stat breakdown bar
       const statBar   = $('git-stat-bar');
