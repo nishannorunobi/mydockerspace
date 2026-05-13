@@ -51,6 +51,10 @@ import port_forward as pf
 from monitor import DockerMonitor, list_containers, get_stats, get_logs, restart_container, start_container, stop_container, STATUS_FILE
 from tools import TOOL_DEFINITIONS, execute_tool
 
+_ROUTER_DIR = BASE_DIR.parent.parent / "llm-router"
+sys.path.insert(0, str(_ROUTER_DIR))
+from router import get_router as _get_router
+
 # ── Chat history ───────────────────────────────────────────────────────────────
 _CHAT_HISTORY_LOG = BASE_DIR / "memory" / "chat_history.log"
 _HIST_MAX_TURNS   = 30
@@ -624,36 +628,39 @@ async def handle_task(body: TaskRequest):
 
 async def _chat_turn(ws: WebSocket, history: list, client) -> list:
     loop = asyncio.get_event_loop()
-    while True:
-        resp = await loop.run_in_executor(None, lambda: client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            system=ai_agent.SYSTEM_PROMPT,
-            tools=TOOL_DEFINITIONS,
-            messages=history,
-        ))
-        tool_calls  = [b for b in resp.content if b.type == "tool_use"]
-        text_blocks = [b for b in resp.content if b.type == "text"]
 
-        for b in text_blocks:
-            if b.text.strip():
-                await ws.send_json({"type": "text", "content": b.text})
+    async def _send_text(text):
+        await ws.send_json({"type": "text", "content": text})
 
-        if resp.stop_reason == "end_turn" or not tool_calls:
-            final = " ".join(b.text for b in text_blocks).strip()
-            if final:
-                history.append({"role": "assistant", "content": final})
-                _append_chat("assistant", final)
-            break
+    async def _send_tool_call(b):
+        await ws.send_json({"type": "tool_call", "id": b.id, "name": b.name, "input": b.input})
 
-        history.append({"role": "assistant", "content": resp.content})
-        results = []
-        for b in tool_calls:
-            await ws.send_json({"type": "tool_call", "id": b.id, "name": b.name, "input": b.input})
-            result = await loop.run_in_executor(None, lambda blk=b: execute_tool(blk.name, blk.input))
-            await ws.send_json({"type": "tool_result", "id": b.id, "name": b.name, "result": result})
-            results.append({"type": "tool_result", "tool_use_id": b.id, "content": json.dumps(result)})
-        history.append({"role": "user", "content": results})
+    async def _send_tool_result(b, result):
+        await ws.send_json({"type": "tool_result", "id": b.id, "name": b.name, "result": result})
+
+    def _tool_executor(name, inp):
+        return execute_tool(name, inp)
+
+    # Wrap async callbacks into sync callables for the router
+    def on_text(text):
+        asyncio.run_coroutine_threadsafe(_send_text(text), loop)
+        _append_chat("assistant", text)
+
+    def on_tool_call(b):
+        asyncio.run_coroutine_threadsafe(_send_tool_call(b), loop)
+
+    def on_tool_result(b, result):
+        asyncio.run_coroutine_threadsafe(_send_tool_result(b, result), loop)
+
+    _, history = await loop.run_in_executor(None, lambda: _get_router().agent_run(
+        system        = ai_agent.SYSTEM_PROMPT,
+        messages      = history,
+        tools         = TOOL_DEFINITIONS,
+        tool_executor = _tool_executor,
+        on_text       = on_text,
+        on_tool_call  = on_tool_call,
+        on_tool_result= on_tool_result,
+    ))
 
     await ws.send_json({"type": "done"})
     return history

@@ -403,6 +403,8 @@ class Dashboard {
     if (tabCon)     tabCon.style.display     = isWorkspace ? '' : 'none';
     const tabCC   = $('tab-claudecode');
     if (tabCC)      tabCC.style.display      = isWorkspace ? '' : 'none';
+    const tabProj = $('tab-projects');
+    if (tabProj)    tabProj.style.display    = isWorkspace ? '' : 'none';
 
     // Clear iframe when switching agents
     const frame = document.getElementById('apidocs-frame');
@@ -462,6 +464,7 @@ class Dashboard {
     if (name === 'git')        this._gitLoadRepos();
     if (name === 'console')    this._consoleInit();
     if (name === 'claudecode') { this._ccInit(); setTimeout(() => this._ccScrollBottom(), 300); }
+    if (name === 'projects')   this._loadProjects();
     if (name === 'apidocs') {
       const frame = document.getElementById('apidocs-frame');
       if (frame && this._currentDocsUrl && !frame.src.endsWith('/docs')) {
@@ -1331,8 +1334,13 @@ class Dashboard {
     if (!wrap) return;
     wrap.innerHTML = '<div class="controls-loading">Fetching health…</div>';
     try {
-      const res  = await fetch(`/api/agents/${agentId}/health`);
-      const h    = await res.json();
+      const fetches = [fetch(`/api/agents/${agentId}/health`)];
+      if (agentId === 'db-agent') fetches.push(fetch(`/api/agents/${agentId}/services`));
+      const results  = await Promise.all(fetches);
+      const h        = await results[0].json();
+      const svcData  = results[1] ? await results[1].json() : {};
+      const services = svcData.services || {};
+
       if (h.error) { wrap.innerHTML = `<div class="controls-loading" style="color:var(--danger)">${esc(h.error)}</div>`; return; }
 
       const issues = h.issues || [];
@@ -1340,17 +1348,15 @@ class Dashboard {
         ? `<div class="ctrl-issues">${issues.map(i => `<div class="ctrl-issue-row">⚠ ${esc(i)}</div>`).join('')}</div>`
         : `<div class="ctrl-ok-row">✓ No active issues</div>`;
 
-      // Build health fields (exclude noisy/internal ones)
       const skip = new Set(['status', 'issues', 'time', 'agent']);
       const fields = Object.entries(h).filter(([k]) => !skip.has(k));
       const fieldsHtml = fields.map(([k, v]) => {
-        const valStr  = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v);
-        const valCls  = typeof v === 'boolean' ? (v ? 'green' : 'red') : '';
+        const valStr = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v);
+        const valCls = typeof v === 'boolean' ? (v ? 'green' : 'red') : '';
         return `<div class="ctrl-field"><span class="ctrl-field-lbl">${esc(k.replace(/_/g,' '))}</span><span class="ctrl-field-val ${valCls}">${esc(valStr)}</span></div>`;
       }).join('');
 
-      // Agent-specific control buttons
-      const buttons = this._controlButtons(agentId, h);
+      const buttons = this._controlButtons(agentId, h, services);
 
       wrap.innerHTML = `
         <div class="controls-header">
@@ -1367,12 +1373,26 @@ class Dashboard {
     }
   }
 
-  _controlButtons(agentId, health) {
+  _controlButtons(agentId, health, services = {}) {
     if (agentId === 'db-agent') {
       const pgUp = health.postgres_running;
-      return `
-        <button class="ctrl-btn start"  ${pgUp  ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/db/start')">▶ Start PostgreSQL</button>
-        <button class="ctrl-btn stop"   ${!pgUp ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/db/stop')">■ Stop PostgreSQL</button>`;
+      let html = `
+        <button class="ctrl-btn start" ${pgUp  ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/db/start')">▶ PostgreSQL</button>
+        <button class="ctrl-btn stop"  ${!pgUp ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/db/stop')">■ PostgreSQL</button>
+        <button class="ctrl-btn init"  ${!pgUp ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/initdb/umsdb')"    title="Create umsdb user + database">⚙ Init umsdb</button>
+        <button class="ctrl-btn init"  ${!pgUp ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/initdb/mydocsdb')" title="Create mydocsdb user + database">⚙ Init mydocsdb</button>`;
+      const webUp = health.pgweb_running;
+      html += `
+        <button class="ctrl-btn start" ${webUp  ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/dbui/start')" title="Start pgweb DB browser on :8085">▶ DB UI</button>
+        <button class="ctrl-btn stop"  ${!webUp ? 'disabled' : ''} onclick="window._dash._controlAction('db-agent','api/dbui/stop')"  title="Stop pgweb">■ DB UI</button>`;
+      for (const [key, svc] of Object.entries(services)) {
+        const [proj, name] = key.split('/');
+        const label = (svc.name || name).replace(/_/g, ' ');
+        html += `
+        <button class="ctrl-btn start" onclick="window._dash._controlAction('db-agent','api/services/${proj}/${name}/start')">▶ ${esc(label)}</button>
+        <button class="ctrl-btn stop"  onclick="window._dash._controlAction('db-agent','api/services/${proj}/${name}/stop')">■ ${esc(label)}</button>`;
+      }
+      return html;
     }
     if (agentId === 'ums-agent') {
       return `
@@ -1404,6 +1424,162 @@ class Dashboard {
       setTimeout(() => note.remove(), 6000);
     }
     setTimeout(() => this._loadControls(agentId), 2000);
+  }
+
+  // ── Projects tab (workspace agent only) ──────────────────────────────────
+
+  async _loadProjects() {
+    const list = $('projects-list');
+    if (!list) return;
+    list.innerHTML = '<div class="projects-loading">Loading…</div>';
+    try {
+      const res  = await fetch('/api/workspace/projects');
+      const data = await res.json();
+      const projects = data.projects || [];
+      if (!projects.length) {
+        list.innerHTML = '<div class="projects-loading">No projects found in projectspace/.</div>';
+        return;
+      }
+      list.innerHTML = projects.map(p => {
+        const runCls    = p.running ? 'running' : 'stopped';
+        const startDis  = p.running || !p.start_script  ? 'disabled' : '';
+        const stopDis   = !p.running || !p.stop_script  ? 'disabled' : '';
+        const scriptShort = p.start_script
+          ? p.start_script.replace(/.*projectspace\//, '')
+          : '— no start script';
+        return `
+        <div class="proj-card" id="proj-card-${esc(p.name)}">
+          <div class="proj-card-header">
+            <div class="proj-card-info">
+              <span class="proj-status-dot ${runCls}"></span>
+              <span class="proj-name">${esc(p.name)}</span>
+            </div>
+            <span class="proj-script-path">${esc(scriptShort)}</span>
+          </div>
+          <div class="proj-card-actions">
+            <button class="ctrl-btn start" ${startDis}
+              onclick="window._dash._projectStart('${esc(p.name)}')">▶ Start</button>
+            <button class="ctrl-btn stop" ${stopDis}
+              onclick="window._dash._projectStop('${esc(p.name)}')">■ Stop</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = `<div class="projects-loading" style="color:var(--danger)">Failed: ${esc(String(e))}</div>`;
+    }
+  }
+
+  async _projectStart(name) {
+    // Abort any existing log stream (without hiding the panel)
+    if (this._projectLogCtrl) { this._projectLogCtrl.abort(); this._projectLogCtrl = null; }
+
+    // Disable Start button immediately
+    const card = document.getElementById(`proj-card-${name}`);
+    const startBtn = card?.querySelector('.ctrl-btn.start');
+    if (startBtn) startBtn.disabled = true;
+
+    // Show log panel
+    const logWrap  = $('project-log-wrap');
+    const logDiv   = $('project-log');
+    const logTitle = $('project-log-title');
+    if (logDiv)   logDiv.innerHTML     = '';
+    if (logTitle) logTitle.textContent = `${name} — starting…`;
+    if (logWrap)  logWrap.style.display = '';
+
+    try {
+      const res  = await fetch(`/api/workspace/projects/${name}/start`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.ok) {
+        if (logDiv) logDiv.innerHTML = `<div class="proj-log-line err">${esc(data.error || 'Failed to start')}</div>`;
+        if (startBtn) startBtn.disabled = false;
+        return;
+      }
+      if (logTitle) logTitle.textContent = `${name} — log`;
+    } catch (e) {
+      if (logDiv) logDiv.innerHTML = `<div class="proj-log-line err">${esc(String(e))}</div>`;
+      if (startBtn) startBtn.disabled = false;
+      return;
+    }
+
+    // Stream log output — refresh list when script exits (gets real container state)
+    await this._streamProjectLog(name);
+    this._loadProjects();
+  }
+
+  async _streamProjectLog(name) {
+    const logDiv = $('project-log');
+    if (!logDiv) return;
+    this._projectLogCtrl = new AbortController();
+    try {
+      const res = await fetch(`/api/workspace/projects/${name}/log`,
+        { signal: this._projectLogCtrl.signal });
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let partial = '';
+
+      const append = text => {
+        if (!text) return;
+        const el = document.createElement('div');
+        el.className = 'proj-log-line';
+        el.textContent = text;
+        logDiv.appendChild(el);
+        logDiv.scrollTop = logDiv.scrollHeight;
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        partial += decoder.decode(value, { stream: true });
+        const chunks = partial.split('\n\n');
+        partial = chunks.pop();
+        for (const chunk of chunks) {
+          if (!chunk.startsWith('data: ')) continue;
+          const line = chunk.slice(6);
+          if (line === '__done__') { reader.cancel(); return; }
+          append(line);
+        }
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError' && logDiv) {
+        const el = document.createElement('div');
+        el.className = 'proj-log-line err';
+        el.textContent = String(e);
+        logDiv.appendChild(el);
+      }
+    }
+  }
+
+  async _projectStop(name) {
+    const logWrap  = $('project-log-wrap');
+    const logDiv   = $('project-log');
+    const logTitle = $('project-log-title');
+    if (logWrap)  logWrap.style.display  = '';
+    if (logTitle) logTitle.textContent   = `${name} — stopping…`;
+    if (logDiv)   logDiv.innerHTML       = '';
+    this._projectCloseLog();
+    try {
+      const res  = await fetch(`/api/workspace/projects/${name}/stop`, { method: 'POST' });
+      const data = await res.json();
+      const el   = document.createElement('div');
+      el.className = data.ok ? 'proj-log-line' : 'proj-log-line err';
+      el.textContent = data.output || data.error || (data.ok ? 'Stopped' : 'Failed');
+      if (logDiv) logDiv.appendChild(el);
+      if (logTitle) logTitle.textContent = `${name} — stopped`;
+    } catch (e) {
+      if (logDiv) logDiv.innerHTML = `<div class="proj-log-line err">${esc(String(e))}</div>`;
+    }
+    setTimeout(() => this._loadProjects(), 1500);
+  }
+
+  _projectCloseLog() {
+    if (this._projectLogCtrl) {
+      this._projectLogCtrl.abort();
+      this._projectLogCtrl = null;
+    }
+    const logWrap = $('project-log-wrap');
+    if (logWrap) logWrap.style.display = 'none';
+    const logDiv = $('project-log');
+    if (logDiv) logDiv.innerHTML = '';
   }
 
   // ── Containers ────────────────────────────────────────────────────────────
@@ -1560,6 +1736,12 @@ class Dashboard {
     $('s-volume').addEventListener('input', () => {
       $('s-vol-val').textContent = $('s-volume').value + '%';
     });
+
+    // Global click sound — fires on every interactive element click
+    const CLICK_SEL = 'button,a,.tab,.vbtn,.sidebar-item,.mem-item,.git-file-row,.change-bar-hdr,.svc-row,.agent-card,.sub-agent-card,.cc-entry,.today-item,select,input[type=checkbox],input[type=range]';
+    document.addEventListener('click', e => {
+      if (e.target.closest(CLICK_SEL)) this.sound.click();
+    }, true);
   }
 }
 

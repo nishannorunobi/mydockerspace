@@ -601,6 +601,33 @@ body[data-theme="light"]{
 .ctrl-btn:disabled{opacity:.35;cursor:not-allowed}
 .ctrl-btn.start{background:var(--green);color:#fff}
 .ctrl-btn.stop{background:var(--red);color:#fff}
+.ctrl-btn.init{background:var(--blue);color:#fff}
+.ctrl-svc-note{font-size:11px;color:var(--text3);margin-top:4px;width:100%}
 .ctrl-action-result{margin-top:12px;padding:10px 14px;border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-all}
 .ctrl-action-result.ok{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--green)}
 .ctrl-action-result.err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.25);color:var(--red)}
+
+/* ── Projects tab ─────────────────────────────────────────────────────────── */
+.projects-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.projects-toolbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.projects-toolbar-title{font-size:13px;font-weight:600;color:var(--text1)}
+.projects-loading{padding:20px;color:var(--text3);font-size:13px}
+.projects-list{flex:1 1 0;overflow-y:auto;padding:14px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-content:start}
+.proj-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;gap:0;transition:border-color .15s;overflow:hidden}
+.proj-card:hover{border-color:var(--blue)}
+.proj-card-header{padding:12px 14px 10px;display:flex;flex-direction:column;gap:6px;flex:1}
+.proj-card-info{display:flex;align-items:center;gap:7px}
+.proj-name{font-size:13px;font-weight:600;color:var(--text1)}
+.proj-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.proj-status-dot.running{background:var(--green)}
+.proj-status-dot.stopped{background:var(--text3)}
+.proj-script-path{font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4}
+.proj-card-actions{display:flex;border-top:1px solid var(--border)}
+.proj-card-actions .ctrl-btn{flex:1;border-radius:0;padding:7px 6px;font-size:12px;border:none;border-right:1px solid var(--border)}
+.proj-card-actions .ctrl-btn:last-child{border-right:none}
+.project-log-wrap{flex-shrink:0;border-top:1px solid var(--border);display:flex;flex-direction:column;height:280px}
+.project-log-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.project-log-title{font-size:12px;font-weight:600;color:var(--text2)}
+.project-log{flex:1;overflow-y:auto;padding:10px 14px;font-family:monospace;font-size:12px;background:var(--bg1);line-height:1.55}
+.proj-log-line{color:var(--text2);white-space:pre-wrap;word-break:break-all}
+.proj-log-line.err{color:var(--red)}

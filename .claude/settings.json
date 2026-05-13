@@ -88,7 +88,29 @@
       "Bash(curl -so /dev/null -w \"%{http_code}\" http://localhost:8889/api/agents/db-agent/health)",
       "Bash(curl -so /dev/null -w \"%{http_code}\" http://localhost:8889/api/agents/ums-agent/health)",
       "Bash(curl -s http://localhost:8888/api/services)",
-      "Bash(/home/nishan/myworkspace/agents/docker-manager-agent/.venv/bin/python3 -c ' *)"
+      "Bash(/home/nishan/myworkspace/agents/docker-manager-agent/.venv/bin/python3 -c ' *)",
+      "Bash(xargs ls -la)",
+      "Bash(.venv/bin/python -c \"import fastapi, uvicorn, httpx; print\\('deps OK'\\)\")",
+      "Bash(PORT=7701 ORCH=http://localhost:8888 .venv/bin/uvicorn server:app --host 0.0.0.0 --port 7701 --log-level info)",
+      "Bash(curl -sf http://localhost:7701/api/health)",
+      "Bash(pkill -f \"ums-agent/ui/.venv\")",
+      "Bash(curl -s http://localhost:7701/api/health)",
+      "Bash(fuser -k 7701/tcp)",
+      "Bash(curl -sf http://localhost:7701/ -o /dev/null -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(.venv/bin/uvicorn server:app --host 0.0.0.0 --port 7701 --log-level warning)",
+      "Bash(curl -sf http://localhost:7701/ -o /dev/null -w \"HTTP %{http_code}\")",
+      "Bash(ollama list *)",
+      "Bash(pkill -f \"claude-code-proxy/.venv\")",
+      "Bash(nohup .venv/bin/uvicorn server:app --host 0.0.0.0 --port 8892 --log-level info)",
+      "Bash(./health.sh)",
+      "Bash(curl -s http://localhost:8892/health)",
+      "Bash(curl -s -X POST http://localhost:8892/chat -H 'Content-Type: application/json' -d '{\"messages\":[{\"role\":\"user\",\"content\":\"say hello in one word\"}],\"system\":\"\"}' --max-time 60)",
+      "Bash(curl -s http://localhost:8891/health)",
+      "Bash(chmod +x /home/nishan/myworkspace/dockerspace/docker_up.sh)",
+      "WebSearch",
+      "Bash(PYTHONPATH=/home/nishan/myworkspace/agents/workspace-agent:/home/nishan/myworkspace/agents/workspace-agent/workspace .venv/bin/python -c ' *)",
+      "Bash(node --check /home/nishan/myworkspace/agents/agent-orchestrator/static/js/dashboard.js)",
+      "Bash(curl -s http://localhost:8888/api/workspace/projects)"
     ]
   }
 }

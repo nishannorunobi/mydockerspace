@@ -171,6 +171,16 @@ def _detect(spec: AgentSpec) -> str:
             return "running"
         except Exception:
             return "stopped"
+    # health_script: run it and use exit code (0 = running)
+    if spec.health_script and spec.home:
+        try:
+            r = subprocess.run(
+                ["bash", spec.health_script],
+                cwd=spec.home, capture_output=True, timeout=5,
+            )
+            return "running" if r.returncode == 0 else "stopped"
+        except Exception:
+            return "unknown"
     # Subprocess/direct connector: check process is alive via pgrep on home dir
     try:
         if not spec.home:

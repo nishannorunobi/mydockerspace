@@ -1,14 +1,19 @@
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
-import anthropic
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 import agent_registry as registry
 from workspace.tools import TOOL_DEFINITIONS, execute_tool, MEMORY_DIR, WORKSPACE_ROOT
+
+# ── LLM Router ────────────────────────────────────────────────────────────────
+_ROUTER_DIR = Path(__file__).resolve().parent.parent.parent / "llm-router"
+sys.path.insert(0, str(_ROUTER_DIR))
+from router import get_router as _get_router
 
 router = APIRouter(tags=["chat"])
 
@@ -121,40 +126,40 @@ MEMORY: workspace_structure.md, projects.md, change_log.md, concerns.md, session
 RULE: Always read memory first. Always save before ending.
 """
 
+_TURN_HIST_TRIM = 40
+
 
 async def _workspace_turn(ws, history, client, user_msg: str):
+    import asyncio
     _append_chat(_WORKSPACE_CHAT_LOG, "user", user_msg)
     _log(f"— user: {user_msg}")
-    import asyncio
+    if len(history) > _TURN_HIST_TRIM:
+        history = history[-_TURN_HIST_TRIM:]
     loop = asyncio.get_event_loop()
-    while True:
-        resp = await loop.run_in_executor(None, lambda: client.messages.create(
-            model="claude-sonnet-4-6", max_tokens=8096,
-            system=_WORKSPACE_SYSTEM, tools=TOOL_DEFINITIONS, messages=history,
-        ))
-        tool_calls  = [b for b in resp.content if b.type == "tool_use"]
-        text_blocks = [b for b in resp.content if b.type == "text"]
 
-        for b in text_blocks:
-            if b.text.strip():
-                await ws.send_json({"type": "text", "content": b.text})
+    def on_text(text):
+        asyncio.run_coroutine_threadsafe(
+            ws.send_json({"type": "text", "content": text}), loop)
+        _append_chat(_WORKSPACE_CHAT_LOG, "assistant", text)
+        _log(f"— agent: {text[:300]}{'…' if len(text) > 300 else ''}")
 
-        if resp.stop_reason == "end_turn" or not tool_calls:
-            final = " ".join(b.text for b in text_blocks).strip()
-            if final:
-                history.append({"role": "assistant", "content": final})
-                _append_chat(_WORKSPACE_CHAT_LOG, "assistant", final)
-                _log(f"— agent: {final[:300]}{'…' if len(final) > 300 else ''}")
-            break
+    def on_tool_call(b):
+        asyncio.run_coroutine_threadsafe(
+            ws.send_json({"type": "tool_call", "id": b.id, "name": b.name, "input": b.input}), loop)
 
-        history.append({"role": "assistant", "content": resp.content})
-        results = []
-        for b in tool_calls:
-            await ws.send_json({"type": "tool_call", "id": b.id, "name": b.name, "input": b.input})
-            result = await loop.run_in_executor(None, lambda blk=b: execute_tool(blk.name, blk.input))
-            await ws.send_json({"type": "tool_result", "id": b.id, "name": b.name, "result": result})
-            results.append({"type": "tool_result", "tool_use_id": b.id, "content": json.dumps(result)})
-        history.append({"role": "user", "content": results})
+    def on_tool_result(b, result):
+        asyncio.run_coroutine_threadsafe(
+            ws.send_json({"type": "tool_result", "id": b.id, "name": b.name, "result": result}), loop)
+
+    _, history = await loop.run_in_executor(None, lambda: _get_router().agent_run(
+        system        = _WORKSPACE_SYSTEM,
+        messages      = history,
+        tools         = TOOL_DEFINITIONS,
+        tool_executor = execute_tool,
+        on_text       = on_text,
+        on_tool_call  = on_tool_call,
+        on_tool_result= on_tool_result,
+    ))
 
     await ws.send_json({"type": "done"})
     return history
@@ -262,43 +267,44 @@ async def _dispatch(agent_id: str, task: str) -> dict:
 
 
 async def _orchestrator_turn(ws, history, client, user_msg: str):
+    import asyncio
     _append_chat(_ORCHESTRATOR_CHAT_LOG, "user", user_msg)
     _log(f"[orchestrator] user: {user_msg}")
-    import asyncio
+    if len(history) > _TURN_HIST_TRIM:
+        history = history[-_TURN_HIST_TRIM:]
     loop = asyncio.get_event_loop()
-    system = _build_orchestrator_prompt()
+    orch_system = _build_orchestrator_prompt()
 
-    while True:
-        resp = await loop.run_in_executor(None, lambda: client.messages.create(
-            model="claude-sonnet-4-6", max_tokens=8096,
-            system=system, tools=_ORCHESTRATOR_TOOLS, messages=history,
-        ))
-        tool_calls  = [b for b in resp.content if b.type == "tool_use"]
-        text_blocks = [b for b in resp.content if b.type == "text"]
+    def on_text(text):
+        asyncio.run_coroutine_threadsafe(
+            ws.send_json({"type": "text", "content": text}), loop)
+        _append_chat(_ORCHESTRATOR_CHAT_LOG, "assistant", text)
+        _log(f"[orchestrator] done: {text[:200]}{'…' if len(text) > 200 else ''}")
 
-        for b in text_blocks:
-            if b.text.strip():
-                await ws.send_json({"type": "text", "content": b.text})
+    def on_tool_call(b):
+        asyncio.run_coroutine_threadsafe(
+            ws.send_json({"type": "tool_call", "id": b.id, "name": b.name, "input": b.input}), loop)
 
-        if resp.stop_reason == "end_turn" or not tool_calls:
-            final = " ".join(b.text for b in text_blocks).strip()
-            if final:
-                history.append({"role": "assistant", "content": final})
-                _append_chat(_ORCHESTRATOR_CHAT_LOG, "assistant", final)
-                _log(f"[orchestrator] done: {final[:200]}{'…' if len(final) > 200 else ''}")
-            break
+    def on_tool_result(b, result):
+        asyncio.run_coroutine_threadsafe(
+            ws.send_json({"type": "tool_result", "id": b.id, "name": b.name, "result": result}), loop)
 
-        history.append({"role": "assistant", "content": resp.content})
-        results = []
-        for b in tool_calls:
-            await ws.send_json({"type": "tool_call", "id": b.id, "name": b.name, "input": b.input})
-            if b.name == "dispatch_to_agent":
-                result = await _dispatch(b.input.get("agent_id", ""), b.input.get("task", ""))
-            else:
-                result = {"error": f"Unknown orchestrator tool: {b.name}"}
-            await ws.send_json({"type": "tool_result", "id": b.id, "name": b.name, "result": result})
-            results.append({"type": "tool_result", "tool_use_id": b.id, "content": json.dumps(result)})
-        history.append({"role": "user", "content": results})
+    def tool_executor(name, inp):
+        if name == "dispatch_to_agent":
+            future = asyncio.run_coroutine_threadsafe(
+                _dispatch(inp.get("agent_id", ""), inp.get("task", "")), loop)
+            return future.result(timeout=120)
+        return {"error": f"Unknown orchestrator tool: {name}"}
+
+    _, history = await loop.run_in_executor(None, lambda: _get_router().agent_run(
+        system        = orch_system,
+        messages      = history,
+        tools         = _ORCHESTRATOR_TOOLS,
+        tool_executor = tool_executor,
+        on_text       = on_text,
+        on_tool_call  = on_tool_call,
+        on_tool_result= on_tool_result,
+    ))
 
     await ws.send_json({"type": "done"})
     return history

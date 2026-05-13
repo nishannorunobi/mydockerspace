@@ -3,11 +3,16 @@ Docker AI agent — given a natural language task, reasons over Docker state
 using tools and returns a text response.
 Called by the /api/tasks endpoint so the agent-orchestrator can dispatch here.
 """
-import json
 import os
+import sys
+from pathlib import Path
 
-import anthropic
 from tools import TOOL_DEFINITIONS, execute_tool
+
+# ── LLM Router ────────────────────────────────────────────────────────────────
+_ROUTER_DIR = Path(__file__).resolve().parent.parent.parent / "llm-router"
+sys.path.insert(0, str(_ROUTER_DIR))
+from router import get_router as _get_router
 
 SYSTEM_PROMPT = """You are a Docker Manager Agent running on the host machine.
 
@@ -38,37 +43,22 @@ Rules:
 - Be concise: container name, action taken, result
 """
 
+_HIST_TRIM = 30
+
+# Expose cached variants so server.py can reference them if needed
+_CACHED_SYSTEM = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
+_CACHED_TOOLS  = TOOL_DEFINITIONS[:-1] + [{**TOOL_DEFINITIONS[-1], "cache_control": {"type": "ephemeral"}}]
+
 
 def run_agent(task: str, history: list) -> list:
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     history.append({"role": "user", "content": task})
+    if len(history) > _HIST_TRIM:
+        history = history[-_HIST_TRIM:]
 
-    while True:
-        resp = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            tools=TOOL_DEFINITIONS,
-            messages=history,
-        )
-        tool_calls  = [b for b in resp.content if b.type == "tool_use"]
-        text_blocks = [b for b in resp.content if b.type == "text"]
-
-        if resp.stop_reason == "end_turn" or not tool_calls:
-            final = " ".join(b.text for b in text_blocks).strip()
-            if final:
-                history.append({"role": "assistant", "content": final})
-            break
-
-        history.append({"role": "assistant", "content": resp.content})
-        results = []
-        for b in tool_calls:
-            result = execute_tool(b.name, b.input)
-            results.append({
-                "type":        "tool_result",
-                "tool_use_id": b.id,
-                "content":     json.dumps(result),
-            })
-        history.append({"role": "user", "content": results})
-
+    _, history = _get_router().agent_run(
+        system        = SYSTEM_PROMPT,
+        messages      = history,
+        tools         = TOOL_DEFINITIONS,
+        tool_executor = execute_tool,
+    )
     return history

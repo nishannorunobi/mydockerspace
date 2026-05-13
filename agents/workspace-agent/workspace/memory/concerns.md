@@ -1,5 +1,5 @@
 # Open Concerns & Flagged Anomalies
-_Last updated: 2026-05-05 (Autonomous maintenance cycle #5)_
+_Last updated: 2026-05-06 (Autonomous maintenance cycle #7 — scheduled)_
 
 ---
 
@@ -108,6 +108,34 @@ _Last updated: 2026-05-05 (Autonomous maintenance cycle #5)_
 ### C-012 — `docker-manager-agent` agent monitoring
 - **Current status (2026-05-05 cycle #5):** Agent IS running on port 8889 ✅ — HTTP 200 on /health
 - **Status:** MONITORING — running; flag if it goes down again
+
+### C-018 — db-agent services.json returns empty services
+- **File:** `projectspace/mypostgresql_db/db-agent/memory/services.json`
+- **Issue:** `{"services": {}}` — discover_services tool ran but found no services. Dashboard Controls tab says "Run discover_services in chat to populate services" — it is manual-trigger only.
+- **Root cause hypothesis:** The workspace mount path inside db-agent container may not match what the tool scans for host_scripts/start.sh files.
+- **Fix:** Run discover_services in the db-agent chat panel; verify mount paths; make it auto-run on startup.
+- **Status:** NEW cycle #6
+
+### C-019 — ums-app container not running (only mypostgresql_db-container up)
+- **Observed:** `docker ps` shows only `mypostgresql_db-container` as of 2026-05-06 self-scan.
+- **Confirmed cycle #7:** ums-app still exited. Exit code 143 (SIGTERM) at 2026-05-06T01:19:01Z — clean/intentional shutdown, NOT a crash. mypostgresql_db-container HEALTHY (pg_isready confirmed).
+- **Impact:** UMS API unavailable. UMS ums-agent will report health failures.
+- **Fix:** Run `./start.sh` from `projectspace/ums/dockerspace/host_scripts/` or restart via dashboard.
+- **Status:** CONFIRMED cycle #7 — awaiting owner action
+
+### C-020 — Two new untracked directories: agents/docs/ and agents/llm-router/
+- **Observed cycle #7:** `git status` shows `?? agents/docs/` and `?? agents/llm-router/` as untracked
+- **agents/docs/:** Contains `generate_architecture_pdf.py` + `llm_router_architecture.pdf` (binary PDF)
+- **agents/llm-router/:** Contains `classifier.py`, `evaluator.py`, `router.py`, `router.yaml`, `layers/` (anthropic_layer.py, ollama.py, base.py) — all syntax checks PASS
+- **Assessment:** New LLM router feature work. All Python files pass syntax check. PDF binary should be gitignored or moved to mountspace/. No hardcoded IPs found.
+- **Fix:** Owner should commit llm-router source files; add `*.pdf` to agents/docs/.gitignore or move PDF to mountspace/
+- **Status:** NEW cycle #7
+
+### C-014 — Uncommitted modifications update (cycle #7)
+- **Current dirty files (12 modified):** `.claude/settings.json`, `agents/agent-orchestrator/routers/agents.py` (+10 lines), `routers/chat.py` (+134/-134 lines refactor), `static/css/style.css`, `static/js/dashboard.js` (+39 lines), `static/js/sounds.js` (+30 lines NEW), `docker-manager-agent/agent.py` (+52/-52), `server.py` (+67/-67), `workspace-agent/agent.py` (+80/-80), memory files (change_log.md, concerns.md, sessions.md)
+- **All 12 modified files pass syntax checks** — no broken code
+- **No hardcoded IPs in source** (one comment-only reference in server.py, safe)
+- **Status:** UPDATED cycle #7 — still awaiting owner commit
 
 ---
 

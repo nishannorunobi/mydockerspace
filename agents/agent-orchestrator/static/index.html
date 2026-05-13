@@ -102,6 +102,7 @@
         <div class="tab"        data-tab="git"        onclick="window._dash.switchTab('git')"        id="tab-git"        style="display:none">Git</div>
         <div class="tab"        data-tab="console"    onclick="window._dash.switchTab('console')"    id="tab-console"    style="display:none">Console</div>
         <div class="tab"        data-tab="claudecode" onclick="window._dash.switchTab('claudecode')" id="tab-claudecode" style="display:none">Claude Code</div>
+        <div class="tab"        data-tab="projects"   onclick="window._dash.switchTab('projects')"   id="tab-projects"   style="display:none">Projects</div>
         <div class="tab"        data-tab="controls"   onclick="window._dash.switchTab('controls')"   id="tab-controls"   style="display:none">Controls</div>
         <div class="tab"        data-tab="containers" onclick="window._dash.switchTab('containers')" id="tab-containers" style="display:none">Containers</div>
         <div class="tab"        data-tab="logs"       onclick="window._dash.switchTab('logs')">Logs</div>
@@ -192,6 +193,26 @@
         <div class="pane" id="pane-today">
           <div class="today-wrap" id="today-wrap">
             <div class="today-loading">Loading workspace intelligence…</div>
+          </div>
+        </div>
+
+        <!-- Projects pane (workspace agent only) -->
+        <div class="pane" id="pane-projects">
+          <div class="projects-wrap">
+            <div class="projects-toolbar">
+              <span class="projects-toolbar-title">Project Launchers</span>
+              <button class="git-btn" onclick="window._dash._loadProjects()">↺ Refresh</button>
+            </div>
+            <div class="projects-list" id="projects-list">
+              <div class="projects-loading">Loading…</div>
+            </div>
+            <div class="project-log-wrap" id="project-log-wrap" style="display:none">
+              <div class="project-log-header">
+                <span class="project-log-title" id="project-log-title">Log</span>
+                <button class="git-btn" onclick="window._dash._projectCloseLog()">✕ Close</button>
+              </div>
+              <div class="project-log" id="project-log"></div>
+            </div>
           </div>
         </div>
 

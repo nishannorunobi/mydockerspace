@@ -1,9 +1,9 @@
 {
-  "8085": {
-    "host_port": 8085,
-    "container": "mypostgresql_db-container",
-    "container_ip": "172.17.0.2",
-    "container_port": 8085,
-    "label": "pgweb DB UI"
+  "7701": {
+    "host_port": 7701,
+    "container": "ums-app",
+    "container_ip": "172.19.0.3",
+    "container_port": 7701,
+    "label": "UMS Agent UI Dashboard"
   }
 }

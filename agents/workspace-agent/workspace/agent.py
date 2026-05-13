@@ -4,7 +4,6 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
-import anthropic
 from dotenv import load_dotenv
 from tools import TOOL_DEFINITIONS, execute_tool, MEMORY_DIR, WORKSPACE_ROOT
 from monitor import WorkspaceMonitor
@@ -12,6 +11,11 @@ from monitor import WorkspaceMonitor
 AGENT_DIR = Path(__file__).parent
 ROOT_DIR  = AGENT_DIR.parent.parent  # workspace-agent/
 load_dotenv(ROOT_DIR.parent / "shared.conf")
+
+# ── LLM Router (shared cascade: Ollama → Haiku → Sonnet) ──────────────────────
+import sys as _sys
+_sys.path.insert(0, str(ROOT_DIR / "llm-router"))
+from router import get_router as _get_router
 
 SYSTEM_PROMPT = f"""You are the Workspace Intelligence Agent — the most capable agent in this system.
 
@@ -189,55 +193,43 @@ def log_session(note: str):
     sessions.write_text(existing + entry)
 
 
+_HIST_TRIM = 40
+
+
 def run_agent(user_message: str, history: list, session_id: str = "") -> list:
     import db as _db_mod
     _db_mod.init()
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    history.append({"role": "user", "content": user_message})
+
+    if len(history) > _HIST_TRIM:
+        history = history[-_HIST_TRIM:]
+
     print(f"\n{BOLD}You:{RESET} {user_message}\n")
-    _final_response = [""]  # mutable container for response capture
+    final_response = [""]
 
-    while True:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=8096,
-            system=SYSTEM_PROMPT,
-            tools=TOOL_DEFINITIONS,
-            messages=history
-        )
+    def _on_text(text):
+        print(f"\n{BOLD}Agent:{RESET} {text}")
+        final_response[0] = text
 
-        tool_calls  = [b for b in response.content if b.type == "tool_use"]
-        text_blocks = [b for b in response.content if b.type == "text"]
+    def _on_tool_call(block):
+        print_tool_call(block.name, block.input)
 
-        for block in text_blocks:
-            if block.text.strip():
-                print(f"\n{BOLD}Agent:{RESET} {block.text}")
+    def _on_tool_result(block, result):
+        print_tool_result(block.name, result)
 
-        if response.stop_reason == "end_turn" or not tool_calls:
-            final = " ".join(b.text for b in text_blocks if b.type == "text").strip()
-            if final:
-                history.append({"role": "assistant", "content": final})
-                _final_response[0] = final
-            break
+    history.append({"role": "user", "content": user_message})
 
-        history.append({"role": "assistant", "content": response.content})
+    _, history = _get_router().agent_run(
+        system        = SYSTEM_PROMPT,
+        messages      = history,
+        tools         = TOOL_DEFINITIONS,
+        tool_executor = execute_tool,
+        on_text       = _on_text,
+        on_tool_call  = _on_tool_call,
+        on_tool_result= _on_tool_result,
+    )
 
-        tool_results = []
-        for block in tool_calls:
-            print_tool_call(block.name, block.input)
-            result = execute_tool(block.name, block.input)
-            print_tool_result(block.name, result)
-            tool_results.append({
-                "type":        "tool_result",
-                "tool_use_id": block.id,
-                "content":     json.dumps(result)
-            })
-
-        history.append({"role": "user", "content": tool_results})
-
-    # Auto-save prompt + response summary to permanent history
     try:
-        summary = _final_response[0][:500] if _final_response[0] else "(no text response)"
+        summary = final_response[0][:500] or "(no text response)"
         _db_mod.log_prompt(user_message, summary, session_id)
     except Exception:
         pass

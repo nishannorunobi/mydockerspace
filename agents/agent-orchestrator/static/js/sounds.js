@@ -72,6 +72,36 @@ class SoundSystem {
     osc.stop(start + len + 0.01);
     this._nodes.push(osc);
   }
+
+  /** Play a short UI click sound — does NOT interrupt alert sounds. */
+  click(vol = 0.35) {
+    const ctx = this._ctx();
+    const t   = ctx.currentTime;
+
+    // White noise burst filtered to a crisp mid-freq click (~35ms)
+    const len    = Math.ceil(ctx.sampleRate * 0.035);
+    const buf    = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+    const src    = ctx.createBufferSource();
+    src.buffer   = buf;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type  = 'bandpass';
+    filter.frequency.value = 1400;
+    filter.Q.value = 0.6;
+
+    const gain   = ctx.createGain();
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(t);
+    src.stop(t + 0.04);
+  }
 }
 
 window.SoundSystem = SoundSystem;

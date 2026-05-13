@@ -1,0 +1,86 @@
+layers:
+  - name: local
+    type: ollama
+    model: qwen2.5:7b
+    enabled: true
+    max_tokens: 1024
+    base_url: http://localhost:11434
+    judge: fast             # judged by the 'fast' layer
+
+  - name: fast
+    type: anthropic
+    model: claude-haiku-4-5-20251001
+    enabled: true
+    max_tokens: 2048
+    judge: smart            # judged by the 'smart' layer
+
+  - name: smart
+    type: anthropic
+    model: claude-sonnet-4-6
+    enabled: true
+    max_tokens: 4096
+    judge: user             # judged by the human
+
+routing:
+  signal_threshold: 1       # bad signals before calling judge
+  judge_max_tokens: 50      # judge replies YES/NO only — keep tiny
+
+# Write-side-effect tools — escalation is skipped if any of these ran
+write_tools:
+  - write_file
+  - edit_file
+  - run_command
+  - git_commit
+  - exec_in_container
+  - run_host_command
+  - manage_port_forward
+  - save_knowledge
+  - add_todo
+  - complete_todo
+  - log_prompt
+
+complexity:
+  layer1_keywords:
+    - list
+    - show
+    - status
+    - what
+    - check
+    - describe
+    - ping
+    - is
+    - are
+    - get
+    - who
+    - when
+    - where
+  layer2_keywords:
+    - write
+    - fix
+    - create
+    - explain
+    - compare
+    - find
+    - make
+    - add
+    - update
+    - run
+    - search
+    - summarise
+    - summarize
+    - generate
+  layer3_keywords:
+    - architect
+    - debug
+    - refactor
+    - design
+    - review
+    - why
+    - analyse
+    - analyze
+    - complex
+    - plan
+    - diagnose
+    - restructure
+    - optimise
+    - optimize

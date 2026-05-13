@@ -27,6 +27,14 @@ async def list_agents():
     return {"agents": data}
 
 
+@router.post("/reload")
+async def reload_registry():
+    """Hot-reload agents.conf without restarting the server."""
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, registry.reload)
+    return {"ok": True, "agents": len(registry.AGENT_SPECS)}
+
+
 @router.post("/{agent_id}/start")
 async def start_agent(agent_id: str):
     spec = registry.SPEC_BY_ID.get(agent_id)
@@ -235,6 +243,16 @@ async def list_sub_agents(agent_id: str):
     all_info = await loop.run_in_executor(None, registry.get_all_info)
     sub_ids  = set(spec.sub_agents)
     return {"sub_agents": [a for a in all_info if a["id"] in sub_ids]}
+
+
+@router.get("/{agent_id}/services")
+async def list_agent_services(agent_id: str):
+    """Proxy GET /api/services from any HTTP agent."""
+    spec = registry.SPEC_BY_ID.get(agent_id)
+    if not spec or spec.connector != "http" or not spec.api_url:
+        return {"services": {}, "discovered": False}
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _proxy_get, f"{spec.api_url.rstrip('/')}/api/services")
 
 
 @router.get("/{agent_id}/containers")
