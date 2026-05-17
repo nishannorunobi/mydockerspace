@@ -32,6 +32,19 @@ def _find_script(project: Path, names: list[str]) -> str | None:
     return None
 
 
+def _find_log_file(project: Path) -> str | None:
+    """Return the first readable log file found in common locations."""
+    candidates = [
+        project / "logs" / "app.log",
+        project / "log" / "app.log",
+        project / "dockerspace" / "host_scripts" / "logs.sh",
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+    return None
+
+
 def _container_running(project_name: str) -> bool:
     """Return True if a Docker container whose name contains project_name is running."""
     try:
@@ -112,12 +125,19 @@ def list_projects():
             continue
         start   = _find_script(entry, ["start.sh", "start_docker.sh"])
         stop    = _find_script(entry, ["stop.sh",  "stop_docker.sh"])
+        health  = _find_script(entry, ["health.sh"])
+        logs    = _find_script(entry, ["logs.sh"])
+        compose = (entry / "dockerspace" / "host_scripts" / "docker-compose.yml").exists() or \
+                  (entry / "docker-compose.yml").exists()
         running = _container_running(entry.name)
         projects.append({
-            "name":         entry.name,
-            "start_script": start,
-            "stop_script":  stop,
-            "running":      running,
+            "name":          entry.name,
+            "start_script":  start,
+            "stop_script":   stop,
+            "health_script": health,
+            "logs_script":   logs,
+            "has_compose":   compose,
+            "running":       running,
         })
     return {"projects": projects}
 
@@ -210,6 +230,88 @@ def stream_log(name: str):
                 yield "data: __done__\n\n"
                 return
 
+            time.sleep(0.15)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/projects/{name}/health")
+def health_project(name: str):
+    project = PROJECTSPACE / name
+    if not project.exists():
+        return JSONResponse({"error": f"Project '{name}' not found"}, status_code=404)
+
+    script = _find_script(project, ["health.sh"])
+    if not script:
+        return {"ok": False, "output": "No health.sh found for this project"}
+
+    try:
+        result = subprocess.run(
+            ["bash", script],
+            cwd=str(Path(script).parent),
+            capture_output=True, text=True, timeout=15,
+        )
+        output = (result.stdout + result.stderr).strip()
+        return {"ok": result.returncode == 0, "output": output or "(no output)"}
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"error": "Health check timed out"}, status_code=500)
+
+
+@router.get("/projects/{name}/docker-logs")
+def stream_docker_logs(name: str):
+    project = PROJECTSPACE / name
+    if not project.exists():
+        return JSONResponse({"error": f"Project '{name}' not found"}, status_code=404)
+
+    # Prefer logs.sh if it exists; otherwise fall back to docker compose logs
+    logs_script = _find_script(project, ["logs.sh"])
+    compose_file = None
+    for candidate in [
+        project / "dockerspace" / "host_scripts" / "docker-compose.yml",
+        project / "docker-compose.yml",
+    ]:
+        if candidate.exists():
+            compose_file = candidate
+            break
+
+    if logs_script:
+        cmd = ["bash", logs_script]
+        cwd = str(Path(logs_script).parent)
+    elif compose_file:
+        cmd = ["docker", "compose", "-f", str(compose_file), "logs", "--tail=80", "--no-log-prefix"]
+        cwd = str(compose_file.parent)
+    else:
+        return JSONResponse({"error": "No logs.sh or docker-compose.yml found"}, status_code=400)
+
+    _output[name] = []
+    proc = subprocess.Popen(
+        cmd, cwd=cwd,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, bufsize=1,
+    )
+    _procs[name] = proc
+    t = threading.Thread(target=_reader, args=(name, proc), daemon=True)
+    t.start()
+
+    output = _output[name]
+
+    def generate():
+        sent = 0
+        yield ": ping\n\n"
+        while True:
+            current_len = len(output)
+            for i in range(sent, current_len):
+                yield f"data: {output[i]}\n\n"
+            sent = current_len
+            if proc.poll() is not None and sent >= len(output):
+                yield "data: \n\n"
+                yield f"data: [Logs complete — exit {proc.returncode}]\n\n"
+                yield "data: __done__\n\n"
+                return
             time.sleep(0.15)
 
     return StreamingResponse(

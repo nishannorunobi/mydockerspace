@@ -192,6 +192,16 @@ def seed_default_agents():
              agent_path="/ums/ums-agent/start.sh", network="ums-network",
              compose_dir=f"{_WORKSPACE}/projectspace/ums/dockerspace/host_scripts",
              clean_restart_cmd="make restart"),
+        dict(id="mycache", name="Cache Agent",
+             container="mycache-redis", port=8892,
+             agent_path="/cache-agent/start.sh", network="mycache_mycache-net",
+             compose_dir=f"{_WORKSPACE}/projectspace/mycache",
+             clean_restart_cmd="bash start.sh"),
+        dict(id="mychannels", name="Channel Agent",
+             container="mychannels-rabbitmq", port=8894,
+             agent_path="/channel-agent/start.sh", network="ums-network",
+             compose_dir=f"{_WORKSPACE}/projectspace/mychannels",
+             clean_restart_cmd="bash start.sh"),
     ]
     for d in defaults:
         existing = get_agent_registration(d["id"])

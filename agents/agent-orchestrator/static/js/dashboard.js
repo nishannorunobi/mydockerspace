@@ -1441,12 +1441,11 @@ class Dashboard {
         return;
       }
       list.innerHTML = projects.map(p => {
-        const runCls    = p.running ? 'running' : 'stopped';
-        const startDis  = p.running || !p.start_script  ? 'disabled' : '';
-        const stopDis   = !p.running || !p.stop_script  ? 'disabled' : '';
-        const scriptShort = p.start_script
-          ? p.start_script.replace(/.*projectspace\//, '')
-          : '— no start script';
+        const runCls     = p.running ? 'running' : 'stopped';
+        const startDis   = p.running || !p.start_script   ? 'disabled' : '';
+        const stopDis    = !p.running || !p.stop_script   ? 'disabled' : '';
+        const healthDis  = !p.health_script               ? 'disabled' : '';
+        const logsDis    = !p.logs_script && !p.has_compose ? 'disabled' : '';
         return `
         <div class="proj-card" id="proj-card-${esc(p.name)}">
           <div class="proj-card-header">
@@ -1454,13 +1453,17 @@ class Dashboard {
               <span class="proj-status-dot ${runCls}"></span>
               <span class="proj-name">${esc(p.name)}</span>
             </div>
-            <span class="proj-script-path">${esc(scriptShort)}</span>
+            <span class="proj-script-path">${p.running ? 'running' : 'stopped'}</span>
           </div>
           <div class="proj-card-actions">
             <button class="ctrl-btn start" ${startDis}
               onclick="window._dash._projectStart('${esc(p.name)}')">▶ Start</button>
             <button class="ctrl-btn stop" ${stopDis}
               onclick="window._dash._projectStop('${esc(p.name)}')">■ Stop</button>
+            <button class="ctrl-btn health" ${healthDis}
+              onclick="window._dash._projectHealth('${esc(p.name)}')">⚡ Health</button>
+            <button class="ctrl-btn logs" ${logsDis}
+              onclick="window._dash._projectLogs('${esc(p.name)}')">📋 Logs</button>
           </div>
         </div>`;
       }).join('');
@@ -1506,12 +1509,13 @@ class Dashboard {
     this._loadProjects();
   }
 
-  async _streamProjectLog(name) {
+  async _streamProjectLog(name, url) {
     const logDiv = $('project-log');
     if (!logDiv) return;
     this._projectLogCtrl = new AbortController();
+    const endpoint = url || `/api/workspace/projects/${name}/log`;
     try {
-      const res = await fetch(`/api/workspace/projects/${name}/log`,
+      const res = await fetch(endpoint,
         { signal: this._projectLogCtrl.signal });
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -1571,11 +1575,47 @@ class Dashboard {
     setTimeout(() => this._loadProjects(), 1500);
   }
 
-  _projectCloseLog() {
-    if (this._projectLogCtrl) {
-      this._projectLogCtrl.abort();
-      this._projectLogCtrl = null;
+  async _projectHealth(name) {
+    const logWrap  = $('project-log-wrap');
+    const logDiv   = $('project-log');
+    const logTitle = $('project-log-title');
+    if (logWrap)  logWrap.style.display = '';
+    if (logTitle) logTitle.textContent  = `${name} — health check…`;
+    if (logDiv)   logDiv.innerHTML      = '';
+    this._abortLogStream();
+    try {
+      const res  = await fetch(`/api/workspace/projects/${name}/health`, { method: 'POST' });
+      const data = await res.json();
+      const lines = (data.output || data.error || '(no output)').split('\n');
+      lines.forEach(line => {
+        const el = document.createElement('div');
+        el.className = `proj-log-line${data.ok === false ? ' err' : ''}`;
+        el.textContent = line;
+        logDiv.appendChild(el);
+      });
+      if (logTitle) logTitle.textContent = `${name} — health ${data.ok ? '✓ ok' : '✗ failed'}`;
+    } catch (e) {
+      if (logDiv) logDiv.innerHTML = `<div class="proj-log-line err">${esc(String(e))}</div>`;
     }
+  }
+
+  async _projectLogs(name) {
+    if (this._projectLogCtrl) { this._projectLogCtrl.abort(); this._projectLogCtrl = null; }
+    const logWrap  = $('project-log-wrap');
+    const logDiv   = $('project-log');
+    const logTitle = $('project-log-title');
+    if (logDiv)   logDiv.innerHTML     = '';
+    if (logTitle) logTitle.textContent = `${name} — logs`;
+    if (logWrap)  logWrap.style.display = '';
+    await this._streamProjectLog(name, `/api/workspace/projects/${name}/docker-logs`);
+  }
+
+  _abortLogStream() {
+    if (this._projectLogCtrl) { this._projectLogCtrl.abort(); this._projectLogCtrl = null; }
+  }
+
+  _projectCloseLog() {
+    this._abortLogStream();
     const logWrap = $('project-log-wrap');
     if (logWrap) logWrap.style.display = 'none';
     const logDiv = $('project-log');

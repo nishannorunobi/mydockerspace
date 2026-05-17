@@ -6,12 +6,17 @@ Thread-safety: _subscribers is only touched from the event loop.
 The background AlertPoller uses loop.call_soon_threadsafe() to bridge threads.
 """
 import asyncio
+import os
+import subprocess
+import tempfile
 import threading
+import time
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
-from agent_registry import AGENT_SPECS, refresh_all
+from agent_registry import AGENT_SPECS, SPEC_BY_ID, refresh_all
 
 POLL_INTERVAL = 15  # seconds between status polls
 
@@ -95,6 +100,51 @@ def _make_alert(ev: dict) -> Optional[dict]:
     }
 
 
+# ── Auto-restart ───────────────────────────────────────────────────────────────
+
+_restart_cooldown: dict = {}   # agent_id → last restart timestamp
+_RESTART_COOLDOWN_S = 30       # don't restart more than once per 30s
+
+
+def _auto_restart(agent_id: str):
+    """Spawn start_script for an agent in a background thread."""
+    now = time.time()
+    last = _restart_cooldown.get(agent_id, 0)
+    if now - last < _RESTART_COOLDOWN_S:
+        return
+    _restart_cooldown[agent_id] = now
+
+    spec = SPEC_BY_ID.get(agent_id)
+    if not spec or not spec.home or not spec.start_script:
+        return
+
+    script_path = Path(spec.home) / spec.start_script
+    if not script_path.exists():
+        return
+
+    def _run():
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".log", mode="w")
+        subprocess.Popen(
+            ["bash", str(script_path)],
+            cwd=spec.home,
+            stdin=subprocess.DEVNULL,
+            stdout=tmp,
+            stderr=tmp,
+            start_new_session=True,
+            env=os.environ.copy(),
+        )
+        tmp.close()
+
+    broadcast({
+        "type": "alert", "id": str(uuid.uuid4()),
+        "alert_type": "auto_restart", "severity": "info",
+        "agent_id": agent_id, "agent_name": spec.name,
+        "message": f"{spec.name} stopped — auto-restarting…",
+        "ts": datetime.now().isoformat(),
+    })
+    threading.Thread(target=_run, daemon=True).start()
+
+
 # ── Poller thread ──────────────────────────────────────────────────────────────
 
 class AlertPoller(threading.Thread):
@@ -116,5 +166,10 @@ class AlertPoller(threading.Thread):
                     alert = _make_alert(ev)
                     if alert:
                         broadcast(alert)
+                    # Auto-restart if configured
+                    if ev["status"] == "stopped":
+                        spec = SPEC_BY_ID.get(ev["agent_id"])
+                        if spec and spec.auto_restart:
+                            _auto_restart(ev["agent_id"])
             except Exception:
                 pass

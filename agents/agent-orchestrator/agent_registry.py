@@ -52,6 +52,7 @@ class AgentSpec:
     services:         List[dict]    = field(default_factory=list)
     sub_agents:       List[str]     = field(default_factory=list)  # agent ids managed by this agent
     hidden:           bool          = False                        # hide from main dashboard grid
+    auto_restart:     bool          = False                        # restart automatically when stopped
 
 
 @dataclass
@@ -114,6 +115,7 @@ def _load_specs() -> List[AgentSpec]:
             services=_parse_services(c.get("services", "")),
             sub_agents=[s.strip() for s in c.get("sub_agents", "").split(",") if s.strip()],
             hidden=c.get("hidden", "false").strip().lower() == "true",
+            auto_restart=c.get("auto_restart", "false").strip().lower() == "true",
         ))
     return specs
 

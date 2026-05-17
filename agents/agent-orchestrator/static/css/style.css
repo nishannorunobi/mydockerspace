@@ -623,8 +623,12 @@ body[data-theme="light"]{
 .proj-status-dot.stopped{background:var(--text3)}
 .proj-script-path{font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4}
 .proj-card-actions{display:flex;border-top:1px solid var(--border)}
-.proj-card-actions .ctrl-btn{flex:1;border-radius:0;padding:7px 6px;font-size:12px;border:none;border-right:1px solid var(--border)}
+.proj-card-actions .ctrl-btn{flex:1;border-radius:0;padding:6px 4px;font-size:11px;border:none;border-right:1px solid var(--border)}
 .proj-card-actions .ctrl-btn:last-child{border-right:none}
+.proj-card-actions .ctrl-btn.health{background:var(--bg3);color:var(--yellow)}
+.proj-card-actions .ctrl-btn.health:disabled{color:var(--text3)}
+.proj-card-actions .ctrl-btn.logs{background:var(--bg3);color:var(--purple)}
+.proj-card-actions .ctrl-btn.logs:disabled{color:var(--text3)}
 .project-log-wrap{flex-shrink:0;border-top:1px solid var(--border);display:flex;flex-direction:column;height:280px}
 .project-log-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
 .project-log-title{font-size:12px;font-weight:600;color:var(--text2)}
